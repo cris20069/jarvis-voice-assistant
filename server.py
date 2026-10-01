@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse
 
 # Load config
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
-with open(CONFIG_PATH, "r") as f:
+with open(CONFIG_PATH, "r", encoding="utf-8-sig") as f:
     config = json.load(f)
 
 ANTHROPIC_API_KEY = config["anthropic_api_key"]

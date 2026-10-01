@@ -18,6 +18,8 @@ public class WinPos {
     public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint);
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 }
 "@
 
@@ -35,10 +37,31 @@ $halfW = [math]::Floor($screenW / 2)
 $halfH = [math]::Floor($screenH / 2)
 
 # 1. Start server + Spotify + apps
-Start-Process "wt.exe" -ArgumentList "new-tab -d `"$WORKSPACE_PATH`" cmd /k `"python $WORKSPACE_PATH\server.py`"" -WindowStyle Minimized
+if (Get-Command "wt.exe" -ErrorAction SilentlyContinue) {
+    Start-Process "wt.exe" -ArgumentList "new-tab -d `"$WORKSPACE_PATH`" cmd /k `"python $WORKSPACE_PATH\server.py`"" -WindowStyle Minimized
+} else {
+    # Windows 10 without Windows Terminal
+    Start-Process "cmd.exe" -ArgumentList "/k python server.py" -WorkingDirectory $WORKSPACE_PATH -WindowStyle Minimized
+}
 Start-Process $SPOTIFY_URI
 code $WORKSPACE_PATH
 foreach ($app in $config.apps) { Start-Process ([Environment]::ExpandEnvironmentVariables($app)) }
+
+# Spotify only opens the track - press Play if it is not playing yet.
+# While playing, the Spotify window title is "Artist - Song"; when paused it starts with "Spotify".
+for ($i = 0; $i -lt 20; $i++) {
+    Start-Sleep -Milliseconds 500
+    $sp = Get-Process -Name "Spotify" -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -ne "" } | Select-Object -First 1
+    if ($sp) { break }
+}
+if ($sp) {
+    Start-Sleep -Seconds 2
+    $sp.Refresh()
+    if ($sp.MainWindowTitle -like "Spotify*") {
+        [WinPos]::keybd_event(0xB3, 0, 0, [UIntPtr]::Zero)   # VK_MEDIA_PLAY_PAUSE down
+        [WinPos]::keybd_event(0xB3, 0, 2, [UIntPtr]::Zero)   # key up
+    }
+}
 
 # 2. Chrome with Jarvis + Skool
 Start-Process "chrome" -ArgumentList "--autoplay-policy=no-user-gesture-required http://localhost:8340 $BROWSER_URL"
