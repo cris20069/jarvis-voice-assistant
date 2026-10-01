@@ -38,7 +38,7 @@ $halfH = [math]::Floor($screenH / 2)
 Start-Process "wt.exe" -ArgumentList "new-tab -d `"$WORKSPACE_PATH`" cmd /k `"python $WORKSPACE_PATH\server.py`"" -WindowStyle Minimized
 Start-Process $SPOTIFY_URI
 code $WORKSPACE_PATH
-foreach ($app in $config.apps) { Start-Process $app }
+foreach ($app in $config.apps) { Start-Process ([Environment]::ExpandEnvironmentVariables($app)) }
 
 # 2. Chrome with Jarvis + Skool
 Start-Process "chrome" -ArgumentList "--autoplay-policy=no-user-gesture-required http://localhost:8340 $BROWSER_URL"
