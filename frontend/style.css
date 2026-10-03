@@ -98,3 +98,20 @@ body {
     margin-bottom: 16px;
     font-size: 14px;
 }
+
+#projects-link {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    color: #4a9eff;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 1px solid rgba(74, 158, 255, 0.4);
+    padding: 6px 12px;
+}
+
+#projects-link:hover {
+    background: rgba(74, 158, 255, 0.12);
+}

@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>J.A.R.V.I.S. Projekt-Zentrale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: HUD-Kommandozentrale — Arc-Reaktor-Header mit Gesamtfortschritt, Telemetrie-Leiste,
+   darunter Projekt-Raster bzw. Status-Board; Details in einer Seitenkonsole. Bewusst nur ein (dunkler) Look. */
+:root {
+  --void: #03070d;          /* Hintergrund */
+  --panel: #07131f;         /* Flaechen */
+  --panel-2: #0b1c2c;
+  --line: #15405a;          /* Linien, Rahmen */
+  --cyan: #52dcff;          /* Arc-Reaktor-Blau, Hauptakzent */
+  --cyan-dim: #2a8fb3;
+  --ice: #d9f6ff;           /* Text */
+  --mute: #7fa6ba;          /* Sekundaertext */
+  --gold: #f2b544;          /* Mark-Gold */
+  --red: #e5402f;           /* Hot-Rod-Rot */
+  --green: #4ef0a4;
+  --violet: #a98bff;
+  --glow: 0 0 12px rgba(82, 220, 255, .45);
+  --f-display: "Orbitron", "Eurostile", "Bank Gothic", "Segoe UI", sans-serif;
+  --f-body: "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Share Tech Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--void);
+  color: var(--ice);
+  font-family: var(--f-body);
+  font-size: 17px;
+  line-height: 1.4;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {               /* HUD-Raster + Lichtkegel */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -5%, rgba(82, 220, 255, .16), transparent 70%),
+    linear-gradient(rgba(82, 220, 255, .045) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(82, 220, 255, .045) 1px, transparent 1px) 0 0 / 44px 44px;
+}
+body::after {                /* Scanlines */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .18) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+.wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+@media (min-width: 720px) { .wrap { padding-inline: 32px; } }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Header ---------- */
+.hud-head {
+  display: grid; grid-template-columns: auto 1fr; gap: 20px 28px; align-items: center;
+  padding-block-end: 22px; border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.hud-head::after {
+  content: ""; position: absolute; left: 0; bottom: -1px; width: 180px; height: 2px;
+  background: var(--cyan); box-shadow: var(--glow);
+}
+.reactor { width: 132px; height: 132px; position: relative; flex: none; }
+.reactor svg { width: 100%; height: 100%; overflow: visible; }
+.reactor .spin { transform-origin: 66px 66px; animation: spin 18s linear infinite; }
+.reactor .spin-rev { transform-origin: 66px 66px; animation: spin 26s linear infinite reverse; }
+.reactor-val {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  font-family: var(--f-display); font-weight: 700; font-size: 26px; color: var(--ice);
+  text-shadow: var(--glow); font-variant-numeric: tabular-nums;
+}
+.reactor-val small { display: block; font-family: var(--f-mono); font-size: 9px; letter-spacing: .2em; color: var(--mute); font-weight: 400; text-shadow: none; margin-top: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.title-block { min-width: 0; display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .28em; color: var(--cyan); text-transform: uppercase; }
+h1 {
+  margin: 0; font-family: var(--f-display); font-weight: 900; letter-spacing: .08em;
+  font-size: clamp(24px, 4.4vw, 44px); line-height: 1.05; text-wrap: balance;
+}
+h1 span { color: var(--cyan); text-shadow: var(--glow); }
+.sys-row { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--f-mono); font-size: 13px; color: var(--mute); }
+.sys-row b { color: var(--ice); font-weight: 400; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); margin-right: 6px; vertical-align: 1px; animation: blink 2.4s ease-in-out infinite; }
+.dot.warn { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+@keyframes blink { 50% { opacity: .35; } }
+.boot { font-family: var(--f-mono); font-size: 12.5px; color: var(--cyan-dim); min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.boot::after { content: "▌"; color: var(--cyan); animation: blink 1s steps(1) infinite; }
+
+@media (max-width: 560px) {
+  .hud-head { grid-template-columns: 1fr; justify-items: start; }
+  .reactor { width: 112px; height: 112px; }
+}
+
+/* ---------- Telemetrie ---------- */
+.telemetry { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-block: 22px; }
+@media (max-width: 720px) { .telemetry { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.metric {
+  position: relative; padding: 12px 14px 12px 16px; background: linear-gradient(180deg, rgba(11, 28, 44, .85), rgba(7, 19, 31, .6));
+  border: 1px solid var(--line); clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+.metric::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px; background: var(--c, var(--cyan)); box-shadow: 0 0 8px var(--c, var(--cyan)); }
+.metric .k { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
+.metric .v { font-family: var(--f-display); font-weight: 700; font-size: 30px; line-height: 1.1; color: var(--ice); font-variant-numeric: tabular-nums; }
+.metric .s { font-size: 14px; color: var(--mute); }
+
+/* ---------- Toolbar ---------- */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-block-end: 18px; }
+.search { flex: 1 1 220px; position: relative; min-width: 0; }
+.search input {
+  width: 100%; padding: 10px 12px 10px 36px; background: var(--panel); border: 1px solid var(--line);
+  font-family: var(--f-mono); font-size: 14px; letter-spacing: .04em;
+}
+.search input::placeholder { color: var(--mute); opacity: .8; }
+.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: var(--cyan-dim); fill: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid var(--line); background: transparent; padding: 6px 11px; cursor: pointer;
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute);
+  transition: color .15s, border-color .15s, background .15s;
+}
+.chip:hover { color: var(--ice); border-color: var(--cyan-dim); }
+.chip[aria-pressed="true"] { color: var(--void); background: var(--cyan); border-color: var(--cyan); box-shadow: var(--glow); }
+.chip .n { opacity: .7; margin-left: 4px; }
+.sel {
+  background: var(--panel); border: 1px solid var(--line); padding: 8px 10px; font-family: var(--f-mono); font-size: 13px; letter-spacing: .06em;
+}
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { background: transparent; border: 0; padding: 8px 12px; cursor: pointer; font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; color: var(--mute); text-transform: uppercase; }
+.seg button[aria-pressed="true"] { background: rgba(82, 220, 255, .15); color: var(--cyan); }
+.btn-primary {
+  margin-left: auto; cursor: pointer; border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(242, 181, 68, .22), rgba(229, 64, 47, .18));
+  color: var(--gold); padding: 9px 16px; font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  transition: background .15s, color .15s;
+}
+.btn-primary:hover { background: var(--gold); color: var(--void); }
+@media (max-width: 560px) { .btn-primary { margin-left: 0; width: 100%; } }
+
+/* ---------- Karten ---------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+.card {
+  --c: var(--cyan);
+  position: relative; display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; padding: 16px 16px 14px;
+  background: linear-gradient(160deg, rgba(11, 28, 44, .92), rgba(5, 13, 22, .92));
+  border: 1px solid var(--line); cursor: pointer; text-align: left; width: 100%;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+  animation: rise .45s ease both;
+}
+.card:hover { border-color: var(--cyan-dim); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0, 0, 0, .5), 0 0 0 1px rgba(82, 220, 255, .12); }
+.card::before, .card::after {     /* HUD-Ecken */
+  content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--c); pointer-events: none;
+}
+.card::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.card::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.card.prio-kritisch { --c: var(--red); }
+.card.prio-hoch { --c: var(--gold); }
+.card.prio-niedrig { --c: var(--mute); }
+.card.done { opacity: .72; }
+@keyframes rise { from { opacity: .0; transform: translateY(6px); } }
+.card-main { min-width: 0; display: grid; gap: 6px; align-content: start; }
+.card h3 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 16px; letter-spacing: .05em; line-height: 1.25; overflow-wrap: anywhere; }
+.card p { margin: 0; color: var(--mute); font-size: 15.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid currentColor;
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; line-height: 1.6;
+}
+.pill::before { content: ""; width: 6px; height: 6px; background: currentColor; }
+.st-idee { color: var(--violet); }
+.st-geplant { color: var(--cyan); }
+.st-arbeit { color: var(--gold); }
+.st-pausiert { color: var(--mute); }
+.st-fertig { color: var(--green); }
+.pill.ex { color: var(--mute); border-style: dashed; }
+.pill.ex::before { display: none; }
+.ring { width: 64px; height: 64px; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring span { position: absolute; inset: 0; display: grid; place-content: center; font-family: var(--f-display); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.card-foot {
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding-top: 10px;
+  border-top: 1px dashed rgba(82, 220, 255, .18); font-family: var(--f-mono); font-size: 12.5px; color: var(--mute); letter-spacing: .06em;
+}
+.card-foot .due-over { color: var(--red); }
+.card-foot .due-soon { color: var(--gold); }
+.card-foot .tag { color: var(--cyan-dim); }
+
+/* ---------- Board ---------- */
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr); gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.col { background: rgba(7, 19, 31, .6); border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 220px; min-width: 0; }
+.col-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); font-family: var(--f-display); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+.col-head .n { font-family: var(--f-mono); color: var(--mute); }
+.col-body { display: grid; gap: 10px; padding: 10px; align-content: start; flex: 1; transition: background .15s; }
+.col-body.over { background: rgba(82, 220, 255, .08); outline: 1px dashed var(--cyan); outline-offset: -6px; }
+.col .card { grid-template-columns: 1fr; padding: 12px; }
+.col .card .ring { display: none; }
+.col .card p { -webkit-line-clamp: 2; }
+.mini-bar { height: 3px; background: rgba(82, 220, 255, .12); }
+.mini-bar i { display: block; height: 100%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+.col-empty { font-family: var(--f-mono); font-size: 12px; color: var(--mute); opacity: .6; text-align: center; padding: 18px 6px; letter-spacing: .1em; }
+
+/* ---------- Leerzustand ---------- */
+.empty {
+  display: grid; justify-items: center; gap: 12px; text-align: center; padding: 48px 16px;
+  border: 1px dashed var(--line); background: rgba(7, 19, 31, .5);
+}
+.empty h2 { margin: 0; font-family: var(--f-display); font-size: 18px; letter-spacing: .12em; }
+.empty p { margin: 0; max-width: 46ch; color: var(--mute); }
+.empty .btn-primary { margin-left: 0; }
+
+/* ---------- Konsole (Drawer) ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(1, 4, 8, .7); backdrop-filter: blur(2px); z-index: 60; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); z-index: 70;
+  background: linear-gradient(180deg, #081624, #040b13); border-left: 1px solid var(--cyan-dim);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, .6), -1px 0 0 rgba(82, 220, 255, .3);
+  transform: translateX(105%); transition: transform .32s cubic-bezier(.2, .8, .2, 1);
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.drawer.open { transform: none; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.drawer-head h2 { margin: 0; font-family: var(--f-display); font-size: 15px; letter-spacing: .18em; text-transform: uppercase; color: var(--cyan); }
+.x { background: none; border: 1px solid var(--line); width: 34px; height: 34px; cursor: pointer; color: var(--mute); font-size: 18px; line-height: 1; }
+.x:hover { color: var(--ice); border-color: var(--cyan-dim); }
+.drawer form { flex: 1; overflow-y: auto; padding: 18px 20px 24px; display: grid; gap: 16px; align-content: start; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label, .field .lbl { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--mute); }
+.field input[type="text"], .field input[type="date"], .field select, .field textarea {
+  width: 100%; background: var(--panel); border: 1px solid var(--line); padding: 9px 11px; font-size: 16px;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--cyan); box-shadow: var(--glow); outline: none; }
+.field textarea { resize: vertical; min-height: 84px; font-family: var(--f-body); }
+#f-name { font-family: var(--f-display); font-size: 17px; letter-spacing: .04em; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 460px) { .row2 { grid-template-columns: 1fr; } }
+.range-row { display: flex; align-items: center; gap: 12px; }
+.range-row output { font-family: var(--f-display); font-weight: 700; width: 4.2ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--cyan); }
+input[type="range"] { flex: 1; accent-color: var(--cyan); }
+.hint { font-size: 14px; color: var(--mute); }
+.tasks { display: grid; gap: 4px; }
+.task { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 6px 8px; background: rgba(11, 28, 44, .6); border: 1px solid transparent; }
+.task:hover { border-color: var(--line); }
+.task input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); }
+.task span { min-width: 0; overflow-wrap: anywhere; }
+.task.done span { color: var(--mute); text-decoration: line-through; }
+.task button { background: none; border: 0; color: var(--mute); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.task button:hover { color: var(--red); }
+.task-add { display: flex; gap: 8px; }
+.task-add input { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); padding: 8px 10px; }
+.btn {
+  cursor: pointer; background: transparent; border: 1px solid var(--cyan-dim); color: var(--cyan); padding: 8px 14px;
+  font-family: var(--f-mono); font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase;
+}
+.btn:hover { background: rgba(82, 220, 255, .12); }
+.btn.danger { border-color: rgba(229, 64, 47, .6); color: var(--red); }
+.btn.danger:hover { background: rgba(229, 64, 47, .14); }
+.btn.danger.armed { background: var(--red); color: var(--void); }
+.drawer-foot { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line); background: rgba(3, 7, 13, .7); }
+.drawer-foot .btn-primary { margin-left: auto; }
+.meta { font-family: var(--f-mono); font-size: 12px; color: var(--mute); letter-spacing: .06em; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); z-index: 80;
+  background: rgba(7, 19, 31, .95); border: 1px solid var(--cyan); box-shadow: var(--glow);
+  padding: 10px 16px; font-family: var(--f-mono); font-size: 13.5px; letter-spacing: .06em; color: var(--ice);
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: calc(100% - 32px);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast::before { content: "JARVIS › "; color: var(--cyan); }
+
+footer.note { margin-top: 36px; font-family: var(--f-mono); font-size: 12px; color: var(--mute); letter-spacing: .06em; display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
+footer.note a { color: var(--cyan-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hud-head">
+    <div class="reactor" aria-hidden="true">
+      <svg viewBox="0 0 132 132">
+        <defs>
+          <radialGradient id="core" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#e9fbff" stop-opacity=".95"></stop>
+            <stop offset="40%" stop-color="#52dcff" stop-opacity=".55"></stop>
+            <stop offset="100%" stop-color="#52dcff" stop-opacity="0"></stop>
+          </radialGradient>
+        </defs>
+        <circle cx="66" cy="66" r="44" fill="url(#core)" opacity=".35"></circle>
+        <g class="spin">
+          <circle cx="66" cy="66" r="62" fill="none" stroke="#2a8fb3" stroke-width="1" stroke-dasharray="2 6"></circle>
+          <path d="M66 4 A62 62 0 0 1 120 35" fill="none" stroke="#52dcff" stroke-width="2"></path>
+          <path d="M66 128 A62 62 0 0 1 12 97" fill="none" stroke="#52dcff" stroke-width="2"></path>
+        </g>
+        <g class="spin-rev">
+          <circle cx="66" cy="66" r="55" fill="none" stroke="#15405a" stroke-width="5" stroke-dasharray="14 4"></circle>
+        </g>
+        <circle cx="66" cy="66" r="47" fill="none" stroke="rgba(82,220,255,.14)" stroke-width="6"></circle>
+        <circle id="reactor-arc" cx="66" cy="66" r="47" fill="none" stroke="#52dcff" stroke-width="6"
+                stroke-linecap="butt" stroke-dasharray="295.3" stroke-dashoffset="295.3"
+                transform="rotate(-90 66 66)" style="filter: drop-shadow(0 0 6px #52dcff); transition: stroke-dashoffset 1s ease"></circle>
+        <circle cx="66" cy="66" r="38" fill="#03070d" stroke="#2a8fb3" stroke-width="1"></circle>
+      </svg>
+      <div class="reactor-val"><span id="reactor-num">0%</span><small>GESAMT</small></div>
+    </div>
+
+    <div class="title-block">
+      <div class="eyebrow">Stark Industries // Mark-Projektregister</div>
+      <h1>J.A.R.V.I.S. <span>Projekt-Zentrale</span></h1>
+      <div class="sys-row">
+        <span><i class="dot" id="link-dot"></i><b id="link-label">Verbinde…</b></span>
+        <span>Systemzeit <b id="clock">--:--:--</b></span>
+        <span>Datum <b id="date">--</b></span>
+      </div>
+      <div class="boot" id="boot" aria-live="polite"></div>
+    </div>
+  </header>
+
+  <section class="telemetry" aria-label="Uebersicht">
+    <div class="metric"><div class="k">Projekte gesamt</div><div class="v" id="m-total">0</div><div class="s" id="m-total-s">im Register</div></div>
+    <div class="metric" style="--c: var(--gold)"><div class="k">In Arbeit</div><div class="v" id="m-active">0</div><div class="s" id="m-active-s">aktiv</div></div>
+    <div class="metric" style="--c: var(--green)"><div class="k">Abgeschlossen</div><div class="v" id="m-done">0</div><div class="s" id="m-done-s">fertig</div></div>
+    <div class="metric" style="--c: var(--red)"><div class="k">Überfällig</div><div class="v" id="m-over">0</div><div class="s" id="m-over-s">Deadline verpasst</div></div>
+  </section>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+      <label class="sr" for="q">Projekte durchsuchen</label>
+      <input id="q" type="search" placeholder="Projekt suchen…" autocomplete="off">
+    </div>
+    <label class="sr" for="sort">Sortierung</label>
+    <select id="sort" class="sel">
+      <option value="prio">Priorität</option>
+      <option value="due">Deadline</option>
+      <option value="progress">Fortschritt</option>
+      <option value="updated">Zuletzt bearbeitet</option>
+    </select>
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button type="button" data-view="grid" aria-pressed="true">Raster</button>
+      <button type="button" data-view="board" aria-pressed="false">Board</button>
+    </div>
+    <button type="button" class="btn-primary" id="new-btn">+ Neues Projekt</button>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Nach Status filtern" style="margin-block-end:18px"></div>
+
+  <main id="view"></main>
+
+  <footer class="note">
+    <span id="store-note">Speicher: –</span>
+    <span>Tastatur: <b>N</b> neues Projekt · <b>/</b> suchen · <b>Esc</b> schließen</span>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawer-title">
+  <div class="drawer-head">
+    <h2 id="drawer-title">Neues Projekt</h2>
+    <button type="button" class="x" id="close-btn" aria-label="Schließen">×</button>
+  </div>
+  <form id="form" autocomplete="off">
+    <div class="field">
+      <label for="f-name">Projektname</label>
+      <input type="text" id="f-name" required maxlength="120" placeholder="z. B. Mark II Sprachmodul">
+    </div>
+    <div class="field">
+      <label for="f-desc">Beschreibung</label>
+      <textarea id="f-desc" rows="3" placeholder="Was soll das Projekt erreichen?"></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="f-status">Status</label>
+        <select id="f-status"></select>
+      </div>
+      <div class="field">
+        <label for="f-prio">Priorität</label>
+        <select id="f-prio"></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="f-cat">Kategorie</label>
+        <input type="text" id="f-cat" list="cat-list" maxlength="40" placeholder="z. B. Jarvis, Smart Home">
+        <datalist id="cat-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="f-due">Deadline</label>
+        <input type="date" id="f-due">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-progress">Fortschritt</label>
+      <div class="range-row">
+        <input type="range" id="f-progress" min="0" max="100" step="5" value="0">
+        <output id="f-progress-out" for="f-progress">0%</output>
+      </div>
+      <div class="hint" id="progress-hint" hidden>Wird automatisch aus den erledigten Aufgaben berechnet.</div>
+    </div>
+    <div class="field">
+      <span class="lbl">Aufgaben</span>
+      <div class="tasks" id="f-tasks"></div>
+      <div class="task-add">
+        <label class="sr" for="f-task-new">Neue Aufgabe</label>
+        <input type="text" id="f-task-new" placeholder="Aufgabe hinzufügen und Enter drücken">
+        <button type="button" class="btn" id="task-add-btn">Hinzufügen</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-notes">Notizen</label>
+      <textarea id="f-notes" rows="4" placeholder="Ideen, Links, offene Fragen…"></textarea>
+    </div>
+    <div class="meta" id="f-meta"></div>
+  </form>
+  <div class="drawer-foot">
+    <button type="button" class="btn danger" id="del-btn">Löschen</button>
+    <button type="button" class="btn" id="cancel-btn">Abbrechen</button>
+    <button type="submit" form="form" class="btn-primary" id="save-btn">Speichern</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- Konstanten ----------
+  const STATUSES = [
+    { id: "idee", label: "Idee" },
+    { id: "geplant", label: "Geplant" },
+    { id: "arbeit", label: "In Arbeit" },
+    { id: "pausiert", label: "Pausiert" },
+    { id: "fertig", label: "Fertig" },
+  ];
+  const PRIOS = [
+    { id: "kritisch", label: "Kritisch", w: 4 },
+    { id: "hoch", label: "Hoch", w: 3 },
+    { id: "mittel", label: "Mittel", w: 2 },
+    { id: "niedrig", label: "Niedrig", w: 1 },
+  ];
+  const statusLabel = id => (STATUSES.find(s => s.id === id) || STATUSES[0]).label;
+  const prioOf = id => PRIOS.find(p => p.id === id) || PRIOS[2];
+  const DAY = 86400000;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const newId = () => "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  // ---------- Speicher: claude.ai-Datenbank → Jarvis-Server → Browser ----------
+  const LS_KEY = "jarvis.projects.v1";
+  const Store = {
+    mode: "local",
+    items: [],
+    onChange: () => {},
+    _db: null,
+    _queue: {},
+
+    async init(onChange) {
+      this.onChange = onChange;
+      if (window.claude && typeof window.claude.use === "function") {
+        try {
+          const db = await window.claude.use("db");
+          if (db) {
+            this._db = db;
+            this.mode = "cloud";
+            await this._subscribe();
+            return;
+          }
+        } catch (e) { /* weiter zum naechsten Speicher */ }
+      }
+      try {
+        const r = await fetch("/api/projects", { headers: { Accept: "application/json" } });
+        const ct = r.headers.get("content-type") || "";
+        if (r.ok && ct.includes("json")) {
+          const data = await r.json();
+          if (Array.isArray(data)) {
+            this.mode = "server";
+            this.items = data;
+            this.onChange();
+            return;
+          }
+        }
+      } catch (e) { /* kein Jarvis-Server */ }
+      this.mode = "local";
+      try { this.items = JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch (e) { this.items = []; }
+      this.onChange();
+    },
+
+    _subscribe() {
+      return new Promise(resolve => {
+        setTimeout(resolve, 4000);
+        this._db.collection("projects").onSnapshot(
+          snap => {
+            this.items = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+            this.onChange();
+            resolve();
+          },
+          err => { toast("Verbindung zur Datenbank verloren (" + err.code + "). Bitte Seite neu laden."); setLink(false, "Datenbank getrennt"); resolve(); }
+        );
+      });
+    },
+
+    _persistLocal() {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(this.items)); } catch (e) { /* Speicher blockiert */ }
+    },
+
+    async save(p) {
+      p.updatedAt = Date.now();
+      const i = this.items.findIndex(x => x.id === p.id);
+      if (i >= 0) this.items[i] = p; else this.items.push(p);
+      this.onChange();
+      if (this.mode === "cloud") {
+        const ref = this._db.collection("projects").doc(p.id);
+        const body = JSON.parse(JSON.stringify(p));
+        delete body.id;
+        this._queue[p.id] = (this._queue[p.id] || Promise.resolve()).then(() => ref.set(body));
+        return this._queue[p.id].catch(e => { toast("Speichern fehlgeschlagen: " + (e.message || e.code)); throw e; });
+      }
+      if (this.mode === "server") {
+        const r = await fetch("/api/projects/" + encodeURIComponent(p.id), {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p),
+        });
+        if (!r.ok) { toast("Server hat das Speichern abgelehnt (" + r.status + ")."); throw new Error("save failed"); }
+        return;
+      }
+      this._persistLocal();
+    },
+
+    async remove(id) {
+      this.items = this.items.filter(x => x.id !== id);
+      this.onChange();
+      if (this.mode === "cloud") {
+        const ref = this._db.collection("projects").doc(id);
+        this._queue[id] = (this._queue[id] || Promise.resolve()).then(() => ref.delete());
+        return this._queue[id];
+      }
+      if (this.mode === "server") {
+        await fetch("/api/projects/" + encodeURIComponent(id), { method: "DELETE" });
+        return;
+      }
+      this._persistLocal();
+    },
+  };
+
+  // ---------- Hilfsfunktionen ----------
+  function progressOf(p) {
+    if (p.status === "fertig") return 100;
+    const t = p.tasks || [];
+    if (t.length) return Math.round(t.filter(x => x.done).length / t.length * 100);
+    return Math.max(0, Math.min(100, Number(p.progress) || 0));
+  }
+  function today0() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function daysLeft(p) {
+    if (!p.deadline) return null;
+    const d = new Date(p.deadline + "T00:00:00").getTime();
+    if (isNaN(d)) return null;
+    return Math.round((d - today0()) / DAY);
+  }
+  function isOverdue(p) { const d = daysLeft(p); return d !== null && d < 0 && p.status !== "fertig"; }
+  function dueText(p) {
+    const d = daysLeft(p);
+    if (d === null) return { t: "Keine Deadline", c: "" };
+    if (p.status === "fertig") return { t: "Abgeschlossen", c: "" };
+    if (d < 0) return { t: `Überfällig · ${-d} T`, c: "due-over" };
+    if (d === 0) return { t: "Heute fällig", c: "due-over" };
+    return { t: `T-${d} ${d === 1 ? "Tag" : "Tage"}`, c: d <= 7 ? "due-soon" : "" };
+  }
+  function fmtDate(ts) {
+    if (!ts) return "–";
+    return new Date(ts).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  const prioColor = id => ({ kritisch: "var(--red)", hoch: "var(--gold)", mittel: "var(--cyan)", niedrig: "var(--mute)" }[id] || "var(--cyan)");
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $("#toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+  }
+  function setLink(ok, label) {
+    $("#link-dot").classList.toggle("warn", !ok);
+    $("#link-label").textContent = label;
+  }
+
+  // ---------- UI-Zustand ----------
+  const ui = { filter: "alle", q: "", sort: "prio", view: "grid", editing: null, draftTasks: [] };
+  try {
+    const saved = JSON.parse(localStorage.getItem("jarvis.projects.ui") || "{}");
+    if (saved.view) ui.view = saved.view;
+    if (saved.sort) ui.sort = saved.sort;
+  } catch (e) { /* egal */ }
+  function rememberUi() {
+    try { localStorage.setItem("jarvis.projects.ui", JSON.stringify({ view: ui.view, sort: ui.sort })); } catch (e) { /* egal */ }
+  }
+
+  // ---------- Rendering ----------
+  function sorted(list) {
+    const arr = list.slice();
+    const by = {
+      prio: (a, b) => prioOf(b.priority).w - prioOf(a.priority).w || (daysLeft(a) ?? 1e9) - (daysLeft(b) ?? 1e9),
+      due: (a, b) => (daysLeft(a) ?? 1e9) - (daysLeft(b) ?? 1e9),
+      progress: (a, b) => progressOf(b) - progressOf(a),
+      updated: (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
+    }[ui.sort];
+    arr.sort((a, b) => (a.status === "fertig") - (b.status === "fertig") || by(a, b));
+    return arr;
+  }
+  function visible() {
+    const q = ui.q.trim().toLowerCase();
+    return Store.items.filter(p => {
+      if (ui.view === "grid" && ui.filter !== "alle" && p.status !== ui.filter) return false;
+      if (!q) return true;
+      return [p.name, p.description, p.category, p.notes, ...(p.tasks || []).map(t => t.text)].join(" ").toLowerCase().includes(q);
+    });
+  }
+
+  function ringSvg(pct, color) {
+    const r = 26, c = 2 * Math.PI * r;
+    return `<div class="ring" aria-label="${pct}% erledigt">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="${r}" fill="none" stroke="rgba(82,220,255,.13)" stroke-width="5"></circle>
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="${color}" stroke-width="5" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - pct / 100)).toFixed(1)}" style="filter:drop-shadow(0 0 4px ${color})"></circle></svg>
+      <span>${pct}%</span></div>`;
+  }
+
+  function cardHtml(p, i, compact) {
+    const pct = progressOf(p);
+    const due = dueText(p);
+    const tasks = p.tasks || [];
+    const done = tasks.filter(t => t.done).length;
+    const prio = prioOf(p.priority);
+    return `<button type="button" class="card prio-${prio.id}${p.status === "fertig" ? " done" : ""}" data-id="${esc(p.id)}" ${compact ? 'draggable="true"' : ""} style="animation-delay:${Math.min(i, 12) * 35}ms">
+      <div class="card-main">
+        <div class="badges">
+          <span class="pill st-${esc(p.status)}">${esc(statusLabel(p.status))}</span>
+          <span class="pill" style="color:${prioColor(prio.id)}">${prio.label}</span>
+          ${p.example ? '<span class="pill ex">Beispiel</span>' : ""}
+        </div>
+        <h3>${esc(p.name || "Ohne Namen")}</h3>
+        ${p.description ? `<p>${esc(p.description)}</p>` : ""}
+        ${compact ? `<div class="mini-bar"><i style="width:${pct}%"></i></div>` : ""}
+      </div>
+      ${ringSvg(pct, p.status === "fertig" ? "var(--green)" : prioColor(prio.id))}
+      <div class="card-foot">
+        <span class="${due.c}">${esc(due.t)}</span>
+        ${tasks.length ? `<span>${done}/${tasks.length} Aufgaben</span>` : ""}
+        ${p.category ? `<span class="tag">#${esc(p.category)}</span>` : ""}
+      </div>
+    </button>`;
+  }
+
+  function renderChips() {
+    const counts = { alle: Store.items.length };
+    STATUSES.forEach(s => counts[s.id] = Store.items.filter(p => p.status === s.id).length);
+    const all = [{ id: "alle", label: "Alle" }, ...STATUSES];
+    $("#chips").innerHTML = all.map(s =>
+      `<button type="button" class="chip" data-filter="${s.id}" aria-pressed="${ui.filter === s.id}">${s.label}<span class="n">${counts[s.id]}</span></button>`
+    ).join("");
+    $("#chips").hidden = ui.view === "board";
+  }
+
+  function renderStats() {
+    const items = Store.items;
+    const active = items.filter(p => p.status === "arbeit");
+    const done = items.filter(p => p.status === "fertig");
+    const over = items.filter(isOverdue);
+    const open = items.filter(p => p.status !== "fertig");
+    $("#m-total").textContent = items.length;
+    $("#m-total-s").textContent = `${open.length} offen`;
+    $("#m-active").textContent = active.length;
+    $("#m-active-s").textContent = active.length ? `Ø ${Math.round(active.reduce((s, p) => s + progressOf(p), 0) / active.length)}% Fortschritt` : "nichts in Arbeit";
+    $("#m-done").textContent = done.length;
+    $("#m-done-s").textContent = items.length ? `${Math.round(done.length / items.length * 100)}% Abschlussquote` : "fertig";
+    $("#m-over").textContent = over.length;
+    $("#m-over-s").textContent = over.length ? over.map(p => p.name).slice(0, 2).join(", ") : "alles im Plan";
+    const overall = items.length ? Math.round(items.reduce((s, p) => s + progressOf(p), 0) / items.length) : 0;
+    $("#reactor-num").textContent = overall + "%";
+    $("#reactor-arc").setAttribute("stroke-dashoffset", (295.3 * (1 - overall / 100)).toFixed(1));
+    $("#cat-list").innerHTML = [...new Set(items.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}"></option>`).join("");
+  }
+
+  function renderView() {
+    const list = sorted(visible());
+    const view = $("#view");
+    if (!Store.items.length) {
+      view.innerHTML = `<div class="empty">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24" fill="none" stroke="var(--cyan-dim)" stroke-dasharray="3 5"></circle><circle cx="28" cy="28" r="10" fill="none" stroke="var(--cyan)" stroke-width="2"></circle></svg>
+        <h2>Register leer, Sir</h2>
+        <p>Noch keine Projekte erfasst. Legen Sie Ihr erstes Projekt an – Name, Status, Deadline und Aufgaben. Ich behalte den Überblick.</p>
+        <button type="button" class="btn-primary" data-action="new">+ Erstes Projekt anlegen</button>
+      </div>`;
+      return;
+    }
+    if (ui.view === "board") {
+      view.innerHTML = `<div class="board">${STATUSES.map(s => {
+        const col = list.filter(p => p.status === s.id);
+        return `<section class="col" aria-label="${s.label}">
+          <div class="col-head st-${s.id}"><span>${s.label}</span><span class="n">${col.length}</span></div>
+          <div class="col-body" data-status="${s.id}">${col.map((p, i) => cardHtml(p, i, true)).join("") || '<div class="col-empty">Projekt hierher ziehen</div>'}</div>
+        </section>`;
+      }).join("")}</div>`;
+      return;
+    }
+    view.innerHTML = list.length
+      ? `<div class="grid">${list.map((p, i) => cardHtml(p, i, false)).join("")}</div>`
+      : `<div class="empty"><h2>Keine Treffer</h2><p>Kein Projekt passt zu diesem Filter. Ändern Sie die Suche oder wählen Sie „Alle“.</p></div>`;
+  }
+
+  function renderStoreNote() {
+    const notes = {
+      cloud: ["Cloud-Datenbank verbunden", "Speicher: claude.ai-Datenbank · auf allen Geräten verfügbar"],
+      server: ["Jarvis-Server verbunden", "Speicher: projects.json auf dem Jarvis-Server · Jarvis kennt Ihre Projekte"],
+      local: ["Lokaler Modus", "Speicher: nur dieser Browser · starte server.py für die Jarvis-Anbindung"],
+    }[Store.mode];
+    setLink(Store.mode !== "local", notes[0]);
+    $("#store-note").textContent = notes[1];
+  }
+
+  function render() {
+    renderStats();
+    renderChips();
+    renderView();
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === ui.view)));
+    $("#sort").value = ui.sort;
+    if (ui.editing) refreshMeta();
+  }
+
+  // ---------- Konsole / Formular ----------
+  const form = $("#form");
+  $("#f-status").innerHTML = STATUSES.map(s => `<option value="${s.id}">${s.label}</option>`).join("");
+  $("#f-prio").innerHTML = PRIOS.map(p => `<option value="${p.id}">${p.label}</option>`).join("");
+
+  function openDrawer(id) {
+    const p = id ? Store.items.find(x => x.id === id) : null;
+    ui.editing = p ? p.id : "__new__";
+    $("#drawer-title").textContent = p ? "Projekt-Konsole" : "Neues Projekt";
+    $("#f-name").value = p?.name || "";
+    $("#f-desc").value = p?.description || "";
+    $("#f-status").value = p?.status || (ui.filter !== "alle" ? ui.filter : "idee");
+    $("#f-prio").value = p?.priority || "mittel";
+    $("#f-cat").value = p?.category || "";
+    $("#f-due").value = p?.deadline || "";
+    $("#f-progress").value = p?.progress || 0;
+    $("#f-notes").value = p?.notes || "";
+    ui.draftTasks = JSON.parse(JSON.stringify(p?.tasks || []));
+    renderTasks();
+    $("#del-btn").hidden = !p;
+    disarmDelete();
+    refreshMeta();
+    $("#drawer").classList.add("open");
+    $("#drawer").setAttribute("aria-hidden", "false");
+    $("#scrim").classList.add("open");
+    setTimeout(() => $("#f-name").focus(), 60);
+  }
+  function closeDrawer() {
+    ui.editing = null;
+    $("#drawer").classList.remove("open");
+    $("#drawer").setAttribute("aria-hidden", "true");
+    $("#scrim").classList.remove("open");
+  }
+  function refreshMeta() {
+    const p = Store.items.find(x => x.id === ui.editing);
+    $("#f-meta").textContent = p ? `ID ${p.id} · angelegt ${fmtDate(p.createdAt)} · geändert ${fmtDate(p.updatedAt)}` : "";
+  }
+  function syncProgressUi() {
+    const auto = ui.draftTasks.length > 0 || $("#f-status").value === "fertig";
+    const val = $("#f-status").value === "fertig" ? 100
+      : ui.draftTasks.length ? Math.round(ui.draftTasks.filter(t => t.done).length / ui.draftTasks.length * 100)
+      : Number($("#f-progress").value);
+    if (auto) $("#f-progress").value = val;
+    $("#f-progress").disabled = auto;
+    $("#progress-hint").hidden = !ui.draftTasks.length;
+    $("#f-progress-out").textContent = val + "%";
+  }
+  function renderTasks() {
+    $("#f-tasks").innerHTML = ui.draftTasks.map((t, i) => `
+      <div class="task${t.done ? " done" : ""}">
+        <input type="checkbox" id="task-${i}" data-i="${i}" ${t.done ? "checked" : ""} aria-label="Erledigt: ${esc(t.text)}">
+        <span>${esc(t.text)}</span>
+        <button type="button" data-del="${i}" aria-label="Aufgabe entfernen">×</button>
+      </div>`).join("");
+    syncProgressUi();
+  }
+  function addTask() {
+    const inp = $("#f-task-new");
+    const text = inp.value.trim();
+    if (!text) return;
+    ui.draftTasks.push({ id: newId(), text, done: false });
+    inp.value = "";
+    renderTasks();
+    inp.focus();
+  }
+  $("#f-tasks").addEventListener("change", e => {
+    const i = e.target.dataset.i;
+    if (i === undefined) return;
+    ui.draftTasks[i].done = e.target.checked;
+    renderTasks();
+  });
+  $("#f-tasks").addEventListener("click", e => {
+    const i = e.target.dataset.del;
+    if (i === undefined) return;
+    ui.draftTasks.splice(Number(i), 1);
+    renderTasks();
+  });
+  $("#task-add-btn").addEventListener("click", addTask);
+  $("#f-task-new").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addTask(); } });
+  $("#f-progress").addEventListener("input", syncProgressUi);
+  $("#f-status").addEventListener("change", syncProgressUi);
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("#f-name").value.trim();
+    if (!name) { $("#f-name").focus(); toast("Ein Projekt braucht einen Namen, Sir."); return; }
+    const existing = Store.items.find(x => x.id === ui.editing);
+    const p = {
+      ...(existing || {}),
+      id: existing ? existing.id : newId(),
+      name,
+      description: $("#f-desc").value.trim(),
+      status: $("#f-status").value,
+      priority: $("#f-prio").value,
+      category: $("#f-cat").value.trim(),
+      deadline: $("#f-due").value || "",
+      progress: Number($("#f-progress").value) || 0,
+      tasks: ui.draftTasks,
+      notes: $("#f-notes").value.trim(),
+      createdAt: existing?.createdAt || Date.now(),
+    };
+    const wasDone = existing && existing.status === "fertig";
+    closeDrawer();
+    try {
+      await Store.save(p);
+      toast(!existing ? `„${p.name}“ ins Register aufgenommen, Sir.`
+        : p.status === "fertig" && !wasDone ? `„${p.name}“ abgeschlossen. Hervorragende Arbeit, Sir.`
+        : `Änderungen an „${p.name}“ gespeichert.`);
+    } catch (err) { /* Toast kommt aus dem Store */ }
+  });
+
+  let deleteArmed = false;
+  function disarmDelete() { deleteArmed = false; $("#del-btn").classList.remove("armed"); $("#del-btn").textContent = "Löschen"; }
+  $("#del-btn").addEventListener("click", async () => {
+    if (!deleteArmed) {
+      deleteArmed = true;
+      $("#del-btn").classList.add("armed");
+      $("#del-btn").textContent = "Wirklich löschen?";
+      return;
+    }
+    const p = Store.items.find(x => x.id === ui.editing);
+    closeDrawer();
+    if (p) { await Store.remove(p.id); toast(`„${p.name}“ aus dem Register entfernt.`); }
+  });
+  $("#cancel-btn").addEventListener("click", closeDrawer);
+  $("#close-btn").addEventListener("click", closeDrawer);
+  $("#scrim").addEventListener("click", closeDrawer);
+
+  // ---------- Interaktion ----------
+  $("#new-btn").addEventListener("click", () => openDrawer(null));
+  $("#view").addEventListener("click", e => {
+    if (e.target.closest("[data-action='new']")) return openDrawer(null);
+    const card = e.target.closest(".card");
+    if (card) openDrawer(card.dataset.id);
+  });
+  $("#chips").addEventListener("click", e => {
+    const b = e.target.closest(".chip");
+    if (!b) return;
+    ui.filter = b.dataset.filter;
+    render();
+  });
+  $("#q").addEventListener("input", e => { ui.q = e.target.value; renderView(); });
+  $("#sort").addEventListener("change", e => { ui.sort = e.target.value; rememberUi(); renderView(); });
+  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => { ui.view = b.dataset.view; rememberUi(); render(); }));
+
+  // Drag & Drop im Board
+  let dragId = null;
+  $("#view").addEventListener("dragstart", e => {
+    const card = e.target.closest(".card");
+    if (!card) return;
+    dragId = card.dataset.id;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", dragId);
+  });
+  $("#view").addEventListener("dragover", e => {
+    const col = e.target.closest(".col-body");
+    if (!col || !dragId) return;
+    e.preventDefault();
+    document.querySelectorAll(".col-body.over").forEach(c => c !== col && c.classList.remove("over"));
+    col.classList.add("over");
+  });
+  $("#view").addEventListener("dragleave", e => {
+    const col = e.target.closest(".col-body");
+    if (col && !col.contains(e.relatedTarget)) col.classList.remove("over");
+  });
+  $("#view").addEventListener("drop", async e => {
+    const col = e.target.closest(".col-body");
+    if (!col || !dragId) return;
+    e.preventDefault();
+    const p = Store.items.find(x => x.id === dragId);
+    dragId = null;
+    if (!p || p.status === col.dataset.status) { render(); return; }
+    const next = { ...p, status: col.dataset.status };
+    await Store.save(next);
+    toast(`„${p.name}“ → ${statusLabel(next.status)}.`);
+  });
+  $("#view").addEventListener("dragend", () => { dragId = null; document.querySelectorAll(".col-body.over").forEach(c => c.classList.remove("over")); });
+
+  document.addEventListener("keydown", e => {
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "");
+    if (e.key === "Escape" && ui.editing) { closeDrawer(); return; }
+    if (typing || ui.editing || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "n" || e.key === "N") { e.preventDefault(); openDrawer(null); }
+    if (e.key === "/") { e.preventDefault(); $("#q").focus(); }
+  });
+
+  // ---------- Uhr + Boot-Log ----------
+  function tick() {
+    const d = new Date();
+    $("#clock").textContent = d.toLocaleTimeString("de-DE");
+    $("#date").textContent = d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  function bootLog(lines) {
+    const el = $("#boot");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { el.textContent = lines[lines.length - 1]; return; }
+    let li = 0, ci = 0;
+    (function step() {
+      if (li >= lines.length) return;
+      const line = lines[li];
+      el.textContent = line.slice(0, ++ci);
+      if (ci >= line.length) { li++; ci = 0; if (li < lines.length) return setTimeout(step, 650); return; }
+      setTimeout(step, 18);
+    })();
+  }
+
+  // ---------- Start ----------
+  render();
+  Store.init(() => { render(); renderStoreNote(); }).then(() => {
+    renderStoreNote();
+    const open = Store.items.filter(p => p.status !== "fertig").length;
+    const over = Store.items.filter(isOverdue).length;
+    bootLog([
+      "> Initialisiere Projektregister…",
+      `> ${Store.items.length} Projekte geladen · ${open} offen`,
+      over ? `> Achtung, Sir: ${over} ${over === 1 ? "Projekt ist" : "Projekte sind"} überfällig.` : "> Alle Systeme nominal. Zu Ihren Diensten, Sir.",
+    ]);
+  });
+})();
+</script>
+</body>
+</html>

@@ -13,7 +13,7 @@ import time
 
 import anthropic
 import httpx
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -83,6 +83,37 @@ WEATHER_INFO = ""
 TASKS_INFO = []
 refresh_data()
 
+# Projekt-Register (frontend/projects.html)
+PROJECTS_PATH = os.path.join(os.path.dirname(__file__), "projects.json")
+PROJECT_ID_PATTERN = re.compile(r'^[A-Za-z0-9_-]{1,64}$')
+PROJECT_STATUS_LABELS = {"idee": "Idee", "geplant": "Geplant", "arbeit": "In Arbeit", "pausiert": "Pausiert", "fertig": "Fertig"}
+
+
+def load_projects() -> list:
+    try:
+        with open(PROJECTS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def save_projects(projects: list):
+    tmp = PROJECTS_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(projects, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, PROJECTS_PATH)
+
+
+def project_progress(p: dict) -> int:
+    if p.get("status") == "fertig":
+        return 100
+    tasks = p.get("tasks") or []
+    if tasks:
+        return round(sum(1 for t in tasks if t.get("done")) / len(tasks) * 100)
+    return int(p.get("progress") or 0)
+
+
 # Action parsing
 ACTION_PATTERN = re.compile(r'\[ACTION:(\w+)\]\s*(.*?)$', re.DOTALL | re.MULTILINE)
 
@@ -97,6 +128,19 @@ def build_system_prompt():
     task_block = ""
     if TASKS_INFO:
         task_block = f"\nOffene Aufgaben ({len(TASKS_INFO)}): " + ", ".join(TASKS_INFO[:5])
+
+    project_block = ""
+    open_projects = [p for p in load_projects() if p.get("status") != "fertig"]
+    if open_projects:
+        prio_rank = {"kritisch": 0, "hoch": 1, "mittel": 2, "niedrig": 3}
+        open_projects.sort(key=lambda p: prio_rank.get(p.get("priority"), 2))
+        parts = []
+        for p in open_projects[:8]:
+            info = f"{PROJECT_STATUS_LABELS.get(p.get('status'), p.get('status'))}, {project_progress(p)}%"
+            if p.get("deadline"):
+                info += f", Deadline {p['deadline']}"
+            parts.append(f"{p.get('name', '?')} ({info})")
+        project_block = f"\nOffene Projekte ({len(open_projects)}): " + "; ".join(parts)
 
     return f"""Du bist Jarvis, der KI-Assistent von Tony Stark aus Iron Man. Dein Dienstherr ist Julian, ein KI-Berater und Automatisierungsexperte. Du sprichst ausschliesslich Deutsch. Julian moechte mit "Sir" angesprochen und gesiezt werden. Nutze "Sie" als Pronomen — FALSCH: "Sir planen", RICHTIG: "Sie planen, Sir". Dein Ton ist trocken, sarkastisch und britisch-hoeflich - wie ein Butler der alles gesehen hat und trotzdem loyal bleibt. Du machst subtile, trockene Bemerkungen, bist aber niemals respektlos. Wenn Sir eine offensichtliche Frage stellt, darfst du mit elegantem Sarkasmus antworten. Du bist hochintelligent, effizient und immer einen Schritt voraus. Halte deine Antworten kurz - maximal 3 Saetze. Du kommentierst fragwuerdige Entscheidungen hoeflich aber spitz.
 
@@ -116,7 +160,9 @@ WENN Julian "Jarvis activate" sagt:
 - Fasse die Aufgaben kurz als Ueberblick in einem Satz zusammen, ohne dabei jede einzelne Aufgabe einfach vorzulesen. Gebe gerne einen humorvollen Kommentar am Ende an.
 - Sei kreativ bei der Begruessung.
 
-=== AKTUELLE DATEN ==={weather_block}{task_block}
+Julian pflegt seine Projekte in der Projekt-Zentrale unter http://localhost:8340/projects. Wenn er nach seinen Projekten, Plaenen oder dem Stand der Dinge fragt, nutze die Projektdaten unten.
+
+=== AKTUELLE DATEN ==={weather_block}{task_block}{project_block}
 ==="""
 
 
@@ -316,10 +362,45 @@ async def serve_index():
     return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "index.html"))
 
 
+@app.get("/projects")
+async def serve_projects():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "projects.html"))
+
+
+@app.get("/api/projects")
+async def list_projects():
+    return load_projects()
+
+
+@app.put("/api/projects/{project_id}")
+async def upsert_project(project_id: str, request: Request):
+    if not PROJECT_ID_PATTERN.match(project_id):
+        raise HTTPException(status_code=400, detail="Ungueltige Projekt-ID")
+    project = await request.json()
+    if not isinstance(project, dict) or not str(project.get("name", "")).strip():
+        raise HTTPException(status_code=400, detail="Projekt braucht einen Namen")
+    project["id"] = project_id
+    projects = [p for p in load_projects() if p.get("id") != project_id]
+    projects.append(project)
+    save_projects(projects)
+    return project
+
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(project_id: str):
+    projects = load_projects()
+    remaining = [p for p in projects if p.get("id") != project_id]
+    if len(remaining) == len(projects):
+        raise HTTPException(status_code=404, detail="Projekt nicht gefunden")
+    save_projects(remaining)
+    return {"deleted": project_id}
+
+
 if __name__ == "__main__":
     import uvicorn
     print("=" * 50, flush=True)
     print("  J.A.R.V.I.S. V2 Server", flush=True)
     print(f"  http://localhost:8340", flush=True)
+    print(f"  Projekte: http://localhost:8340/projects", flush=True)
     print("=" * 50, flush=True)
     uvicorn.run(app, host="0.0.0.0", port=8340)

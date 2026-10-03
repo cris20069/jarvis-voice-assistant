@@ -32,12 +32,14 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 ├── SETUP.md               # Setup-Anleitung fuer Claude Code
 ├── config.json            # Persoenliche Config (gitignored)
 ├── config.example.json    # Template mit Platzhaltern
+├── projects.json          # Projekt-Register (gitignored, wird automatisch angelegt)
 ├── requirements.txt       # Python Dependencies
 ├── server.py              # FastAPI Backend (Claude Haiku + ElevenLabs TTS)
 ├── browser_tools.py       # Playwright Browser-Steuerung
 ├── screen_capture.py      # Screenshot + Claude Vision
 ├── frontend/
 │   ├── index.html         # Jarvis Web-UI
+│   ├── projects.html      # Projekt-Zentrale (/projects), speichert in projects.json
 │   ├── main.js            # Speech Recognition + WebSocket + Audio
 │   └── style.css          # Dark Theme mit Orb-Animation
 └── scripts/
