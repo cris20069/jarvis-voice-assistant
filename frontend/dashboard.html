@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S. Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: Kommandozentrale fuer den mittleren Monitor — Kopfzeile mit Uhr, drei Spalten
+   (Umwelt+System | Reaktor+Log | Projekte+Aufgaben), unten ein Laufband. Alles skaliert ueber die Bildschirmhoehe. */
+:root {
+  --void: #03070d;
+  --panel: #07131f;
+  --line: #15405a;
+  --cyan: #52dcff;
+  --cyan-dim: #2a8fb3;
+  --ice: #d9f6ff;
+  --mute: #7fa6ba;
+  --gold: #f2b544;
+  --red: #e5402f;
+  --green: #4ef0a4;
+  --violet: #a98bff;
+  --glow: 0 0 .7rem rgba(82, 220, 255, .45);
+  --f-display: "Orbitron", "Eurostile", "Bank Gothic", "Segoe UI", sans-serif;
+  --f-body: "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "Share Tech Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { font-size: clamp(10px, min(1.85vh, 1.05vw), 30px); }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--void); color: var(--ice); font-family: var(--f-body); font-size: 1rem; line-height: 1.3;
+  overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: .9rem;
+  padding: 1rem 1.4rem .8rem; cursor: default;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 55% 55% at 50% 48%, rgba(82, 220, 255, .12), transparent 70%),
+    linear-gradient(rgba(82, 220, 255, .04) 1px, transparent 1px) 0 0 / 2.4rem 2.4rem,
+    linear-gradient(90deg, rgba(82, 220, 255, .04) 1px, transparent 1px) 0 0 / 2.4rem 2.4rem;
+}
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 40;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .16) 0 1px, transparent 1px 3px);
+}
+body > * { position: relative; z-index: 1; }
+@media (max-width: 1000px), (max-height: 520px) {
+  html { font-size: 14px; }
+  body { height: auto; min-height: 100%; overflow: auto; }
+}
+
+/* ---------- Kopfzeile ---------- */
+header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line); position: relative; }
+header::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 12rem; height: 2px; background: var(--cyan); box-shadow: var(--glow); }
+.brand { display: flex; align-items: center; gap: .9rem; min-width: 0; }
+.brand svg { width: 3.4rem; height: 3.4rem; flex: none; }
+.brand .spin { transform-origin: 50% 50%; animation: spin 14s linear infinite; }
+.brand h1 { margin: 0; font-family: var(--f-display); font-weight: 900; letter-spacing: .12em; font-size: 1.7rem; line-height: 1.1; }
+.brand h1 span { color: var(--cyan); text-shadow: var(--glow); }
+.brand small { display: block; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .26em; color: var(--mute); text-transform: uppercase; margin-top: .15rem; }
+.clock { text-align: center; }
+.clock .time { font-family: var(--f-display); font-weight: 700; font-size: 3.1rem; line-height: 1; letter-spacing: .06em; color: var(--ice); text-shadow: var(--glow); font-variant-numeric: tabular-nums; }
+.clock .time small { font-size: 1.2rem; color: var(--cyan); margin-left: .2rem; }
+.clock .date { font-family: var(--f-mono); font-size: .85rem; letter-spacing: .2em; color: var(--mute); text-transform: uppercase; margin-top: .25rem; }
+.status { display: grid; justify-items: end; gap: .3rem; font-family: var(--f-mono); font-size: .8rem; letter-spacing: .12em; color: var(--mute); text-transform: uppercase; }
+.status .greet { font-family: var(--f-body); font-size: 1.15rem; letter-spacing: .04em; text-transform: none; color: var(--ice); font-weight: 500; }
+.chip { display: inline-flex; align-items: center; gap: .4rem; }
+.dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--green); box-shadow: 0 0 .5rem var(--green); }
+.dot.off { background: var(--red); box-shadow: 0 0 .5rem var(--red); }
+.dot.idle { background: var(--mute); box-shadow: none; }
+.dot.live { animation: blink 2.4s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Spalten ---------- */
+main { display: grid; grid-template-columns: 1fr 1.28fr 1fr; gap: 1rem; min-height: 0; }
+.col { display: grid; gap: 1rem; min-height: 0; min-width: 0; }
+.col.left { grid-template-rows: auto auto minmax(0, 1fr); }
+.col.center { grid-template-rows: auto minmax(0, 1fr); }
+.col.right { grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); }
+@media (max-width: 1000px) { main { grid-template-columns: 1fr; } .col { grid-template-rows: none !important; } }
+
+.panel {
+  position: relative; min-height: 0; min-width: 0; padding: .8rem 1rem .9rem; overflow: hidden;
+  background: linear-gradient(165deg, rgba(11, 28, 44, .88), rgba(5, 13, 22, .88)); border: 1px solid var(--line);
+  clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 1rem, 100% 100%, 0 100%);
+  animation: rise .6s ease both; animation-delay: var(--d, 0s);
+  display: flex; flex-direction: column;
+}
+.panel::before { content: ""; position: absolute; left: 0; top: 0; width: 1rem; height: 1rem; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); }
+.panel::after { content: ""; position: absolute; right: 0; bottom: 0; width: 1rem; height: 1rem; border-bottom: 2px solid var(--cyan-dim); border-right: 2px solid var(--cyan-dim); }
+@keyframes rise { from { opacity: 0; transform: translateY(.5rem); } }
+.panel h2 {
+  margin: 0 0 .6rem; display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; flex: none;
+  font-family: var(--f-mono); font-weight: 400; font-size: .8rem; letter-spacing: .26em; text-transform: uppercase; color: var(--cyan);
+}
+.panel h2 em { font-style: normal; color: var(--mute); letter-spacing: .1em; }
+.body { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.body.fade::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.4rem; background: linear-gradient(transparent, rgba(5, 13, 22, .95)); pointer-events: none; }
+.empty { font-family: var(--f-mono); font-size: .85rem; color: var(--mute); letter-spacing: .08em; padding: .4rem 0; }
+
+/* Wetter */
+.weather { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1.1rem; align-items: center; }
+.weather svg { width: 4.6rem; height: 4.6rem; stroke: var(--cyan); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 .35rem rgba(82, 220, 255, .55)); }
+.weather .temp { font-family: var(--f-display); font-weight: 700; font-size: 2.9rem; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: var(--glow); }
+.weather .desc { font-size: 1.15rem; color: var(--ice); margin-top: .1rem; }
+.weather .facts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; font-family: var(--f-mono); font-size: .85rem; color: var(--mute); letter-spacing: .06em; padding-top: .55rem; border-top: 1px dashed rgba(82, 220, 255, .2); }
+.weather .facts b { color: var(--ice); font-weight: 400; }
+
+/* System */
+.gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; text-align: center; }
+.gauge { position: relative; aspect-ratio: 1; max-width: 6rem; width: 100%; margin: 0 auto; }
+.gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.gauge .v { position: absolute; inset: 0; display: grid; place-content: center; font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.gauge-label { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .2em; color: var(--mute); margin-top: .2rem; }
+.uptime { margin-top: .55rem; font-family: var(--f-mono); font-size: .8rem; color: var(--mute); letter-spacing: .08em; text-align: center; }
+
+/* Listen */
+.rows { display: grid; gap: .5rem; }
+.row { display: grid; grid-template-columns: 3px 1fr auto; gap: .2rem .7rem; align-items: center; }
+.row::before { content: ""; grid-row: 1 / span 2; align-self: stretch; background: var(--c, var(--cyan)); box-shadow: 0 0 .4rem var(--c, var(--cyan)); }
+.row .name { font-weight: 600; font-size: 1.08rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.row .tag { font-family: var(--f-mono); font-size: .78rem; letter-spacing: .08em; color: var(--mute); white-space: nowrap; }
+.row .tag.warn { color: var(--gold); }
+.row .tag.bad { color: var(--red); }
+.bar { grid-column: 2 / span 2; height: .32rem; background: rgba(82, 220, 255, .12); position: relative; }
+.bar i { display: block; height: 100%; background: var(--c, var(--cyan)); box-shadow: 0 0 .4rem var(--c, var(--cyan)); transition: width 1s ease; }
+.bar-meta { grid-column: 2 / span 2; display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: .75rem; color: var(--mute); letter-spacing: .06em; }
+.task { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: start; font-size: 1.05rem; }
+.task::before { content: ""; width: .8rem; height: .8rem; margin-top: .25rem; border: 1.5px solid var(--cyan-dim); }
+.task span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Reaktor */
+.reactor-panel { align-items: center; padding-block: .9rem; }
+.reactor-wrap { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; width: 100%; }
+.reactor { width: min(17rem, 30vh); aspect-ratio: 1; position: relative; }
+.reactor svg { width: 100%; height: 100%; overflow: visible; }
+.reactor .r1 { transform-origin: 50% 50%; animation: spin 24s linear infinite; }
+.reactor .r2 { transform-origin: 50% 50%; animation: spin 36s linear infinite reverse; }
+.reactor .r3 { transform-origin: 50% 50%; animation: spin 60s linear infinite; }
+.reactor .val { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; font-family: var(--f-display); font-weight: 900; font-size: 2.9rem; text-shadow: var(--glow); font-variant-numeric: tabular-nums; }
+.reactor .val small { display: block; font-family: var(--f-mono); font-size: .68rem; letter-spacing: .24em; color: var(--mute); font-weight: 400; text-shadow: none; margin-top: .2rem; }
+.side-stats { display: grid; gap: .9rem; }
+.side-stats.l { text-align: right; justify-items: end; }
+.stat .n { font-family: var(--f-display); font-weight: 700; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--c, var(--ice)); text-shadow: 0 0 .6rem var(--c, transparent); }
+.stat .k { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .2em; color: var(--mute); text-transform: uppercase; margin-top: .15rem; }
+
+/* Log */
+.log { display: grid; gap: .45rem; align-content: end; min-height: 100%; }
+.log-row { display: grid; grid-template-columns: auto auto 1fr; gap: .2rem .7rem; align-items: baseline; font-size: 1.02rem; animation: rise .4s ease both; }
+.log-row .t { font-family: var(--f-mono); font-size: .75rem; color: var(--mute); }
+.log-row .who { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); min-width: 5.2em; }
+.log-row.jarvis .who { color: var(--cyan); }
+.log-row.telegram .who { color: var(--violet); }
+.log-row .tx { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--ice); }
+.log-row.user .tx { color: var(--mute); }
+
+/* Laufband */
+footer { display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--line); padding-top: .55rem; font-family: var(--f-mono); font-size: .85rem; letter-spacing: .08em; color: var(--mute); min-width: 0; }
+footer .lbl { color: var(--cyan); letter-spacing: .24em; flex: none; }
+.ticker { overflow: hidden; flex: 1; min-width: 0; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+.ticker-track { display: inline-block; animation: ticker var(--dur, 60s) linear infinite; }
+.ticker-track span { margin-right: 3rem; }
+.ticker-track b { color: var(--ice); font-weight: 400; }
+.ticker-track .bad { color: var(--red); }
+.ticker-track .warn { color: var(--gold); }
+@keyframes ticker { to { transform: translateX(-50%); } }
+.hint { flex: none; opacity: .6; }
+
+.offline body::after { background: repeating-linear-gradient(0deg, rgba(229, 64, 47, .12) 0 1px, transparent 1px 3px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="29" fill="none" stroke="#15405a" stroke-width="1"/>
+      <g class="spin"><circle cx="32" cy="32" r="29" fill="none" stroke="#52dcff" stroke-width="2" stroke-dasharray="14 22"/></g>
+      <circle cx="32" cy="32" r="19" fill="none" stroke="#2a8fb3" stroke-width="3" stroke-dasharray="3 3"/>
+      <circle cx="32" cy="32" r="9" fill="#52dcff" opacity=".85" style="filter:drop-shadow(0 0 5px #52dcff)"/>
+    </svg>
+    <div>
+      <h1>J.A.R.V.I.S. <span>Dashboard</span></h1>
+      <small>Stark Industries // Kommandozentrale</small>
+    </div>
+  </div>
+  <div class="clock">
+    <div class="time"><span id="hm">--:--</span><small id="sec">--</small></div>
+    <div class="date" id="date">--</div>
+  </div>
+  <div class="status">
+    <div class="greet" id="greet">Willkommen.</div>
+    <div class="chip"><span class="dot live" id="d-server"></span><span id="t-server">Verbinde…</span></div>
+    <div class="chip"><span class="dot idle" id="d-tg"></span><span id="t-tg">Telegram</span></div>
+  </div>
+</header>
+
+<main>
+  <section class="col left" aria-label="Umwelt und System">
+    <div class="panel" style="--d:.05s">
+      <h2>Wetter <em id="w-city"></em></h2>
+      <div class="body" id="weather"><div class="empty">Keine Wetterdaten.</div></div>
+    </div>
+    <div class="panel" style="--d:.15s">
+      <h2>System <em id="sys-meta"></em></h2>
+      <div class="body" id="system"><div class="empty">psutil fehlt: pip install psutil</div></div>
+    </div>
+    <div class="panel" style="--d:.25s">
+      <h2>Fristen <em>nächste 7 Tage</em></h2>
+      <div class="body fade" id="deadlines"></div>
+    </div>
+  </section>
+
+  <section class="col center" aria-label="Gesamtstatus">
+    <div class="panel reactor-panel" style="--d:.1s">
+      <h2 style="width:100%">Projekt-Fortschritt gesamt <em id="proj-meta"></em></h2>
+      <div class="reactor-wrap">
+        <div class="side-stats l">
+          <div class="stat" style="--c:var(--gold)"><div class="n" id="s-active">0</div><div class="k">In Arbeit</div></div>
+          <div class="stat" style="--c:var(--green)"><div class="n" id="s-done">0</div><div class="k">Fertig</div></div>
+        </div>
+        <div class="reactor">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs><radialGradient id="core" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#e9fbff" stop-opacity=".9"/><stop offset=".45" stop-color="#52dcff" stop-opacity=".35"/><stop offset="1" stop-color="#52dcff" stop-opacity="0"/></radialGradient></defs>
+            <circle cx="100" cy="100" r="70" fill="url(#core)" opacity=".5"/>
+            <g class="r3"><circle cx="100" cy="100" r="96" fill="none" stroke="#2a8fb3" stroke-width="1" stroke-dasharray="1.5 7"/>
+              <path d="M100 4A96 96 0 0 1 183 52" fill="none" stroke="#52dcff" stroke-width="2.5"/><path d="M100 196A96 96 0 0 1 17 148" fill="none" stroke="#52dcff" stroke-width="2.5"/></g>
+            <g class="r2"><circle cx="100" cy="100" r="86" fill="none" stroke="#15405a" stroke-width="7" stroke-dasharray="20 6"/></g>
+            <g class="r1"><circle cx="100" cy="100" r="76" fill="none" stroke="#2a8fb3" stroke-width="1.2" stroke-dasharray="40 12 4 12"/></g>
+            <circle cx="100" cy="100" r="66" fill="none" stroke="rgba(82,220,255,.14)" stroke-width="9"/>
+            <circle id="arc" cx="100" cy="100" r="66" fill="none" stroke="#52dcff" stroke-width="9" stroke-dasharray="414.7" stroke-dashoffset="414.7" transform="rotate(-90 100 100)" style="filter:drop-shadow(0 0 7px #52dcff);transition:stroke-dashoffset 1.2s ease"/>
+            <circle cx="100" cy="100" r="54" fill="#03070d" stroke="#2a8fb3" stroke-width="1"/>
+          </svg>
+          <div class="val"><span id="overall">0%</span><small>GESAMT</small></div>
+        </div>
+        <div class="side-stats">
+          <div class="stat"><div class="n" id="s-open">0</div><div class="k">Offen</div></div>
+          <div class="stat" style="--c:var(--red)"><div class="n" id="s-over">0</div><div class="k">Überfällig</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="--d:.2s">
+      <h2>Jarvis-Log <em id="log-meta"></em></h2>
+      <div class="body"><div class="log" id="log"></div></div>
+    </div>
+  </section>
+
+  <section class="col right" aria-label="Projekte und Aufgaben">
+    <div class="panel" style="--d:.1s">
+      <h2>Projekte <em id="p-meta"></em></h2>
+      <div class="body fade"><div class="rows" id="projects"></div></div>
+    </div>
+    <div class="panel" style="--d:.2s">
+      <h2>Aufgaben <em id="t-meta"></em></h2>
+      <div class="body fade"><div class="rows" id="tasks"></div></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span class="lbl">MELDUNGEN</span>
+  <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
+  <span class="hint">F = Vollbild</span>
+</footer>
+
+<script>
+(() => {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const PRIO_COLOR = { kritisch: "var(--red)", hoch: "var(--gold)", mittel: "var(--cyan)", niedrig: "var(--mute)" };
+  const STATUS_LABEL = { idee: "Idee", geplant: "Geplant", arbeit: "In Arbeit", pausiert: "Pausiert", fertig: "Fertig" };
+  let last = null;
+
+  // ---------- Uhr ----------
+  function tick() {
+    const d = new Date();
+    $("#hm").textContent = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    $("#sec").textContent = String(d.getSeconds()).padStart(2, "0");
+    $("#date").textContent = d.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    if (last) $("#greet").textContent = greeting(d.getHours(), last.user);
+  }
+  function greeting(h, u) {
+    const part = h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 17 ? "Guten Tag" : h < 22 ? "Guten Abend" : "Gute Nacht";
+    return `${part}, ${u.address || u.name}.`;
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---------- Wetter ----------
+  const WEATHER = [
+    [/thunder/i, "Gewitter", "storm"], [/snow|sleet|blizzard|ice/i, "Schnee", "snow"], [/drizzle/i, "Nieselregen", "rain"],
+    [/rain|shower/i, "Regen", "rain"], [/fog|mist|haze/i, "Nebel", "fog"], [/overcast/i, "Bedeckt", "cloud"],
+    [/partly/i, "Teils bewölkt", "cloud"], [/cloud/i, "Bewölkt", "cloud"], [/sunny|clear/i, "Klar", "sun"],
+  ];
+  const CLOUD = '<path d="M18 40h27a10 10 0 0 0 1-19.9A14 14 0 0 0 19 23a8.5 8.5 0 0 0-1 17z"/>';
+  const ICONS = {
+    sun: '<circle cx="32" cy="32" r="9"/><path d="M32 8v7M32 49v7M8 32h7M49 32h7M15 15l5 5M44 44l5 5M49 15l-5 5M20 44l-5 5"/>',
+    cloud: CLOUD + '<path d="M22 50h20" opacity=".35"/>',
+    rain: CLOUD + '<path d="M22 47l-3 7M32 47l-3 7M42 47l-3 7"/>',
+    snow: CLOUD + '<path d="M22 49v.1M32 52v.1M42 49v.1M27 55v.1M37 55v.1"/>',
+    storm: CLOUD + '<path d="M33 42l-6 9h8l-5 8"/>',
+    fog: '<path d="M10 24h44M16 34h38M10 44h44M18 54h30"/>',
+  };
+  function renderWeather(d) {
+    $("#w-city").textContent = d.city || "";
+    const w = d.weather;
+    if (!w) { $("#weather").innerHTML = '<div class="empty">Keine Wetterdaten verfügbar.</div>'; return; }
+    const hit = WEATHER.find(x => x[0].test(w.description || "")) || [0, w.description, "cloud"];
+    $("#weather").innerHTML = `<div class="weather">
+      <svg viewBox="0 0 64 64" aria-hidden="true">${ICONS[hit[2]]}</svg>
+      <div><div class="temp">${esc(w.temp)}°</div><div class="desc">${esc(hit[1])}</div></div>
+      <div class="facts"><span>Gefühlt <b>${esc(w.feels_like)}°</b></span><span>Wind <b>${esc(w.wind_kmh)} km/h</b></span><span>Feuchte <b>${esc(w.humidity)}%</b></span></div></div>`;
+  }
+
+  // ---------- System ----------
+  function gauge(label, pct) {
+    const r = 40, c = 2 * Math.PI * r;
+    const col = pct >= 90 ? "var(--red)" : pct >= 75 ? "var(--gold)" : "var(--cyan)";
+    return `<div><div class="gauge"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(82,220,255,.13)" stroke-width="8"/>
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="${col}" stroke-width="8" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - pct / 100)).toFixed(1)}" style="filter:drop-shadow(0 0 4px ${col});transition:stroke-dashoffset .8s ease"/></svg>
+      <div class="v">${pct}%</div></div><div class="gauge-label">${label}</div></div>`;
+  }
+  function renderSystem(d) {
+    const s = d.system;
+    if (!s) return;
+    $("#system").innerHTML = `<div class="gauges">${gauge("CPU", s.cpu)}${gauge("RAM", s.ram)}${gauge("DISK", s.disk)}</div>
+      <div class="uptime">PC läuft seit ${s.uptime_h < 48 ? s.uptime_h + " Std." : Math.round(s.uptime_h / 24) + " Tagen"}</div>`;
+  }
+
+  // ---------- Projekte ----------
+  function dueTag(days) {
+    if (days === null || days === undefined) return ["", ""];
+    if (days < 0) return [`${-days} T überfällig`, "bad"];
+    if (days === 0) return ["heute fällig", "bad"];
+    return [`T-${days}`, days <= 3 ? "warn" : ""];
+  }
+  function renderProjects(d) {
+    const p = d.projects;
+    $("#overall").textContent = p.overall + "%";
+    $("#arc").setAttribute("stroke-dashoffset", (414.7 * (1 - p.overall / 100)).toFixed(1));
+    $("#s-active").textContent = p.active; $("#s-done").textContent = p.done;
+    $("#s-open").textContent = p.open; $("#s-over").textContent = p.overdue;
+    $("#proj-meta").textContent = `${p.total} im Register`;
+    $("#p-meta").textContent = `${p.open} offen`;
+    $("#projects").innerHTML = p.list.length ? p.list.map(x => {
+      const [t, cls] = dueTag(x.days_left);
+      return `<div class="row" style="--c:${PRIO_COLOR[x.priority] || "var(--cyan)"}">
+        <div class="name">${esc(x.name)}</div><div class="tag ${cls}">${esc(t || STATUS_LABEL[x.status] || "")}</div>
+        <div class="bar"><i style="width:${x.progress}%"></i></div>
+        <div class="bar-meta"><span>${esc(STATUS_LABEL[x.status] || "")}${x.tasks_total ? ` · ${x.tasks_done}/${x.tasks_total} Aufgaben` : ""}</span><span>${x.progress}%</span></div></div>`;
+    }).join("") : '<div class="empty">Keine offenen Projekte. Trag eines unter /projects ein.</div>';
+    $("#deadlines").innerHTML = p.deadlines.length ? '<div class="rows">' + p.deadlines.map(x => {
+      const [t, cls] = dueTag(x.days_left);
+      return `<div class="row" style="--c:${x.days_left < 0 ? "var(--red)" : x.days_left <= 3 ? "var(--gold)" : "var(--cyan)"}"><div class="name">${esc(x.name)}</div><div class="tag ${cls}">${esc(t)}</div>
+        <div class="bar-meta"><span>${esc(STATUS_LABEL[x.status] || "")}</span><span>${x.progress}%</span></div></div>`;
+    }).join("") + "</div>" : '<div class="empty">Keine Deadlines in Sicht.</div>';
+  }
+
+  // ---------- Aufgaben ----------
+  function renderTasks(d) {
+    $("#t-meta").textContent = d.tasks_configured ? `${d.tasks_total} offen` : "";
+    $("#tasks").innerHTML = !d.tasks_configured ? '<div class="empty">Obsidian nicht verbunden (obsidian_inbox_path in config.json).</div>'
+      : d.tasks.length ? d.tasks.map(t => `<div class="task"><span>${esc(t)}</span></div>`).join("")
+      : '<div class="empty">Keine offenen Aufgaben. Bemerkenswert.</div>';
+  }
+
+  // ---------- Log ----------
+  const WHO = { user: "Sie", jarvis: "Jarvis", telegram: "Telegram" };
+  let logSig = "";
+  function renderLog(d) {
+    $("#log-meta").textContent = d.activity.length ? `${d.activity.length} Einträge` : "";
+    const sig = JSON.stringify(d.activity);
+    if (sig === logSig) return;
+    logSig = sig;
+    $("#log").innerHTML = d.activity.length ? d.activity.slice(-6).map(a =>
+      `<div class="log-row ${esc(a.role)}"><span class="t">${esc(a.t)}</span><span class="who">${esc(WHO[a.role] || a.role)}</span><span class="tx">${esc(a.text)}</span></div>`
+    ).join("") : '<div class="empty">Noch keine Gespräche. Sag „Jarvis activate“.</div>';
+  }
+
+  // ---------- Laufband ----------
+  let tickSig = "";
+  function renderTicker(d) {
+    const items = [];
+    const p = d.projects;
+    p.deadlines.forEach(x => {
+      const [t, cls] = dueTag(x.days_left);
+      items.push(`<span class="${cls}">${esc(x.name)}: ${esc(t)}</span>`);
+    });
+    if (d.tasks_configured) items.push(`<span><b>${d.tasks_total}</b> offene Aufgaben</span>`);
+    items.push(`<span><b>${p.open}</b> offene Projekte, Gesamtfortschritt <b>${p.overall}%</b></span>`);
+    if (d.weather) items.push(`<span>${esc(d.city)}: <b>${esc(d.weather.temp)}°C</b>, gefühlt ${esc(d.weather.feels_like)}°C</span>`);
+    items.push(`<span>${p.overdue ? "Achtung, Sir: Fristen verpasst." : "Alle Systeme nominal."}</span>`);
+    const html = items.join("");
+    if (html === tickSig) return;
+    tickSig = html;
+    $("#ticker").innerHTML = html + html;  // doppelt, damit das Band nahtlos laeuft (-50%)
+    $("#ticker").style.setProperty("--dur", Math.max(30, html.replace(/<[^>]+>/g, "").length * 0.4) + "s");
+  }
+
+  // ---------- Polling ----------
+  function setOnline(ok) {
+    document.documentElement.classList.toggle("offline", !ok);
+    $("#d-server").className = "dot " + (ok ? "live" : "off");
+    $("#t-server").textContent = ok ? "Server online" : "Server offline";
+  }
+  function render(d) {
+    last = d;
+    renderWeather(d); renderSystem(d); renderProjects(d); renderTasks(d); renderLog(d); renderTicker(d);
+    $("#d-tg").className = "dot " + (d.telegram ? "live" : "idle");
+    $("#t-tg").textContent = d.telegram ? "Telegram aktiv" : "Telegram aus";
+    $("#sys-meta").textContent = d.system ? `Jarvis seit ${d.server_uptime_min} Min.` : "";
+    tick();
+  }
+  async function poll() {
+    try {
+      const r = await fetch("/api/dashboard", { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      render(await r.json());
+      setOnline(true);
+    } catch (e) { setOnline(false); }
+  }
+  poll();
+  setInterval(poll, 4000);
+
+  // ---------- Vollbild ----------
+  document.addEventListener("keydown", e => {
+    if (e.key !== "f" && e.key !== "F") return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  });
+})();
+</script>
+</body>
+</html>

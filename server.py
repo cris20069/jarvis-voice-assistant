@@ -6,6 +6,7 @@ speaks with ElevenLabs, controls browser with Playwright.
 
 import asyncio
 import base64
+import collections
 import json
 import os
 import re
@@ -14,6 +15,12 @@ from datetime import date, datetime, timedelta
 
 import anthropic
 import httpx
+
+try:
+    import psutil
+    psutil.cpu_percent(None)  # erster Aufruf liefert immer 0, daher einmal vorwaermen
+except ImportError:
+    psutil = None
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -132,6 +139,16 @@ def project_days_left(p: dict):
 ACTION_PATTERN = re.compile(r'\[ACTION:(\w+)\]\s*(.*?)$', re.DOTALL | re.MULTILINE)
 
 conversations: dict[str, list] = {}
+
+# Letzte Gespraeche und Nachrichten fuer das Dashboard
+ACTIVITY: collections.deque = collections.deque(maxlen=20)
+STARTED_AT = time.time()
+
+
+def log_activity(role: str, text: str):
+    text = (text or "").strip()
+    if text:
+        ACTIVITY.append({"t": time.strftime("%H:%M:%S"), "role": role, "text": text[:240]})
 
 def build_system_prompt():
     weather_block = ""
@@ -283,6 +300,7 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
         refresh_data()
 
     conversations[session_id].append({"role": "user", "content": user_text})
+    log_activity("user", user_text)
     history = conversations[session_id][-16:]
 
     # LLM call
@@ -302,6 +320,7 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
         print(f"  Jarvis: {spoken_text[:80]}", flush=True)
         print(f"  Audio bytes: {len(audio)}", flush=True)
         conversations[session_id].append({"role": "assistant", "content": spoken_text})
+        log_activity("jarvis", spoken_text)
         await ws.send_json({
             "type": "response",
             "text": spoken_text,
@@ -360,11 +379,97 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
 
         audio2 = await synthesize_speech(summary)
         conversations[session_id].append({"role": "assistant", "content": summary})
+        log_activity("jarvis", summary)
         await ws.send_json({
             "type": "response",
             "text": summary,
             "audio": base64.b64encode(audio2).decode("utf-8") if audio2 else "",
         })
+
+
+# ---------- Dashboard ----------
+PRIORITY_RANK = {"kritisch": 0, "hoch": 1, "mittel": 2, "niedrig": 3}
+
+
+def dashboard_projects():
+    items = []
+    for p in load_projects():
+        tasks = p.get("tasks") or []
+        items.append({
+            "id": p.get("id"),
+            "name": p.get("name", "?"),
+            "status": p.get("status", "idee"),
+            "priority": p.get("priority", "mittel"),
+            "category": p.get("category", ""),
+            "progress": project_progress(p),
+            "days_left": project_days_left(p),
+            "tasks_done": sum(1 for t in tasks if t.get("done")),
+            "tasks_total": len(tasks),
+        })
+    return items
+
+
+def system_stats():
+    if psutil is None:
+        return None
+    try:
+        return {
+            "cpu": round(psutil.cpu_percent(None)),
+            "ram": round(psutil.virtual_memory().percent),
+            "disk": round(psutil.disk_usage(os.path.abspath(os.sep)).percent),
+            "uptime_h": round((time.time() - psutil.boot_time()) / 3600, 1),
+        }
+    except Exception:
+        return None
+
+
+@app.get("/api/dashboard")
+async def dashboard_data():
+    projects = dashboard_projects()
+    open_projects = [p for p in projects if p["status"] != "fertig"]
+    open_projects.sort(key=lambda p: (PRIORITY_RANK.get(p["priority"], 2), p["days_left"] if p["days_left"] is not None else 10**6))
+    deadlines = sorted(
+        (p for p in open_projects if p["days_left"] is not None and p["days_left"] <= 7),
+        key=lambda p: p["days_left"],
+    )
+    overall = round(sum(p["progress"] for p in projects) / len(projects)) if projects else 0
+    return {
+        "user": {"name": USER_NAME, "address": USER_ADDRESS},
+        "city": CITY,
+        "weather": WEATHER_INFO or None,
+        "tasks": TASKS_INFO[:8],
+        "tasks_total": len(TASKS_INFO),
+        "tasks_configured": bool(TASKS_FILE),
+        "projects": {
+            "total": len(projects),
+            "open": len(open_projects),
+            "active": sum(1 for p in projects if p["status"] == "arbeit"),
+            "done": sum(1 for p in projects if p["status"] == "fertig"),
+            "overdue": sum(1 for p in open_projects if p["days_left"] is not None and p["days_left"] < 0),
+            "overall": overall,
+            "list": open_projects[:8],
+            "deadlines": deadlines[:6],
+        },
+        "system": system_stats(),
+        "telegram": telegram.enabled,
+        "activity": list(ACTIVITY)[-8:],
+        "server_uptime_min": round((time.time() - STARTED_AT) / 60),
+    }
+
+
+async def data_refresher():
+    """Wetter und Aufgaben alle 15 Minuten aktualisieren (fuer das Dashboard)."""
+    while True:
+        await asyncio.sleep(900)
+        try:
+            await asyncio.to_thread(refresh_data)
+        except Exception as e:
+            print(f"[jarvis] Daten-Refresh Fehler: {e}", flush=True)
+
+
+@app.on_event("startup")
+async def start_data_refresher():
+    asyncio.create_task(data_refresher())
 
 
 # ---------- Telegram: Nachrichten von Jarvis ----------
@@ -387,6 +492,8 @@ def save_notify_state(state: dict):
 async def send_jarvis_message(text: str, voice: bool = TELEGRAM_VOICE) -> bool:
     """Text an Telegram schicken, optional zusaetzlich als Sprachnachricht mit Jarvis-Stimme."""
     ok = await telegram.send_text(text)
+    if ok:
+        log_activity("telegram", text)
     if ok and voice:
         audio = await synthesize_speech(text)
         if audio:
@@ -519,6 +626,11 @@ async def serve_index():
     return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "index.html"))
 
 
+@app.get("/dashboard")
+async def serve_dashboard():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "dashboard.html"))
+
+
 @app.get("/projects")
 async def serve_projects():
     return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "projects.html"))
@@ -559,5 +671,6 @@ if __name__ == "__main__":
     print("  J.A.R.V.I.S. V2 Server", flush=True)
     print(f"  http://localhost:8340", flush=True)
     print(f"  Projekte: http://localhost:8340/projects", flush=True)
+    print(f"  Dashboard: http://localhost:8340/dashboard", flush=True)
     print("=" * 50, flush=True)
     uvicorn.run(app, host="0.0.0.0", port=8340)

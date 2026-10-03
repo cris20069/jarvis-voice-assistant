@@ -118,6 +118,23 @@ Zweimal klatschen → Spotify, VS Code, Obsidian, Chrome mit Jarvis starten auto
 
 ---
 
+## Dashboard und mehrere Monitore
+
+`http://localhost:8340/dashboard` zeigt alles Wichtige auf einen Blick: Uhr, Wetter, CPU/RAM/Festplatte, Projekte mit Fortschritt und Fristen, Obsidian-Aufgaben, das Jarvis-Log und ein Laufband mit Meldungen. Mit **F** schaltest du den Vollbildmodus um.
+
+Beim Doppelklatschen sortiert `launch-session.ps1` die Fenster nach Monitor (von links nach rechts gezaehlt, 0 = ganz links):
+
+| Monitor | Standard | Einstellung in `config.json` |
+|---|---|---|
+| Links | VS Code, Obsidian, Chrome (Jarvis), Spotify als Viertel | `"monitor_apps": 0` |
+| Mitte | Dashboard als Vollbild-Fenster | `"monitor_dashboard": 1` |
+
+Mit zwei Monitoren landet das Dashboard rechts. Mit nur einem Monitor bleibt alles wie vorher und das Dashboard wird nicht gestartet. Falls die Reihenfolge nicht stimmt (Windows nummeriert nach der Anordnung in den Anzeigeeinstellungen), tausche einfach die Zahlen.
+
+Fuer die Systemwerte wird `psutil` gebraucht: `pip install -r requirements.txt`.
+
+---
+
 ## Nachrichten aufs Handy (Telegram, kostenlos)
 
 Jarvis kann dir per Telegram schreiben — als Text und als Sprachnachricht mit seiner Stimme.

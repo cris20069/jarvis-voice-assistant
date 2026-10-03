@@ -16,5 +16,7 @@
   "telegram_chat_id": "",
   "telegram_briefing_time": "07:30",
   "telegram_deadline_time": "18:00",
-  "telegram_voice": true
+  "telegram_voice": true,
+  "monitor_apps": 0,
+  "monitor_dashboard": 1
 }

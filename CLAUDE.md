@@ -40,11 +40,12 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 ├── telegram_notify.py     # Telegram-Bot: Text- und Sprachnachrichten aufs Handy
 ├── frontend/
 │   ├── index.html         # Jarvis Web-UI
+│   ├── dashboard.html     # Dashboard fuer den mittleren Monitor (/dashboard)
 │   ├── projects.html      # Projekt-Zentrale (/projects), speichert in projects.json
 │   ├── main.js            # Speech Recognition + WebSocket + Audio
 │   └── style.css          # Dark Theme mit Orb-Animation
 └── scripts/
     ├── clap-trigger.py    # Doppelklatschen-Erkennung
     ├── telegram-setup.py  # Telegram-Bot verbinden (Token + Chat-ID in config.json)
-    └── launch-session.ps1 # Startet alle Apps + Jarvis
+    └── launch-session.ps1 # Startet alle Apps + Jarvis (Apps links, Dashboard Mitte)
 ```
