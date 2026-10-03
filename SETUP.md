@@ -118,12 +118,38 @@ Zweimal klatschen → Spotify, VS Code, Obsidian, Chrome mit Jarvis starten auto
 
 ---
 
+## Nachrichten aufs Handy (Telegram, kostenlos)
+
+Jarvis kann dir per Telegram schreiben — als Text und als Sprachnachricht mit seiner Stimme.
+
+1. Telegram installieren, **@BotFather** suchen, `/newbot` senden, Namen vergeben → Token kopieren
+2. `python scripts\telegram-setup.py` ausfuehren, Token einfuegen
+3. Dem eigenen Bot in Telegram `/start` schicken → das Skript traegt alles in `config.json` ein
+4. `server.py` neu starten
+
+| Einstellung in `config.json` | Bedeutung |
+|---|---|
+| `telegram_briefing_time` | Uhrzeit fuers Morgen-Briefing (z.B. `"07:30"`, `""` = aus) |
+| `telegram_deadline_time` | Uhrzeit fuer den Deadline-Alarm (Projekte heute/morgen faellig oder ueberfaellig) |
+| `telegram_voice` | `true` = zusaetzlich Sprachnachricht (verbraucht ElevenLabs-Zeichen) |
+
+Testen ohne zu warten (Server muss laufen):
+```
+curl -X POST "http://localhost:8340/api/telegram/test?kind=briefing"
+```
+`kind` = `hallo`, `briefing` oder `deadlines`.
+
+Geplante Nachrichten kommen nur, wenn der Server laeuft — bis zu 60 Minuten nach der eingestellten Uhrzeit wird nachgeholt, hoechstens einmal pro Tag.
+
+---
+
 ## Was Jarvis kann
 
 - **"Wie ist das Wetter?"** → kennt das aktuelle Wetter
 - **"Such nach MiroFish"** → oeffnet Browser, sucht, liest Ergebnisse
 - **"Oeffne skool.com"** → oeffnet die Seite im Browser
 - **"Was siehst du auf meinem Bildschirm?"** → macht Screenshot, beschreibt was er sieht
+- **"Schick mir das aufs Handy"** → Jarvis schreibt dir per Telegram
 - **Jede Frage** → antwortet im Jarvis-Stil mit Stimme
 
 ---

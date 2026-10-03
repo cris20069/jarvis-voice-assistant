@@ -10,6 +10,7 @@ import json
 import os
 import re
 import time
+from datetime import date, datetime, timedelta
 
 import anthropic
 import httpx
@@ -29,6 +30,9 @@ USER_NAME = config.get("user_name", "Julian")
 USER_ADDRESS = config.get("user_address", "Sir")
 CITY = config.get("city", "Hamburg")
 TASKS_FILE = config.get("obsidian_inbox_path", "")
+TELEGRAM_BRIEFING_TIME = config.get("telegram_briefing_time", "07:30")
+TELEGRAM_DEADLINE_TIME = config.get("telegram_deadline_time", "18:00")
+TELEGRAM_VOICE = config.get("telegram_voice", True)
 
 ai = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 http = httpx.AsyncClient(timeout=30)
@@ -37,6 +41,9 @@ app = FastAPI()
 
 import browser_tools
 import screen_capture
+from telegram_notify import TelegramNotifier
+
+telegram = TelegramNotifier(config.get("telegram_bot_token", ""), config.get("telegram_chat_id", ""))
 
 
 def get_weather_sync():
@@ -114,6 +121,13 @@ def project_progress(p: dict) -> int:
     return int(p.get("progress") or 0)
 
 
+def project_days_left(p: dict):
+    try:
+        return (date.fromisoformat(p.get("deadline") or "") - date.today()).days
+    except ValueError:
+        return None
+
+
 # Action parsing
 ACTION_PATTERN = re.compile(r'\[ACTION:(\w+)\]\s*(.*?)$', re.DOTALL | re.MULTILINE)
 
@@ -152,6 +166,7 @@ AKTIONEN - Schreibe die passende Aktion ans ENDE deiner Antwort. Der Text VOR de
 [ACTION:SEARCH] suchbegriff - Internet durchsuchen und Ergebnisse zusammenfassen
 [ACTION:OPEN] url - URL im Browser oeffnen
 [ACTION:SCREEN] - Bildschirm ansehen und beschreiben. WICHTIG: Bei SCREEN schreibe NUR die Aktion, KEINEN Text davor. Also NUR "[ACTION:SCREEN]" und sonst nichts.
+[ACTION:TELEGRAM] nachricht - Schickt Julian eine Nachricht aufs Handy (Telegram). Nutze das, wenn er sagt "schick mir das", "erinnere mich per Nachricht" oder aehnliches. Die Nachricht steht nach dem Tag, vollstaendig und verstaendlich ohne Kontext.
 [ACTION:NEWS] - Aktuelle Weltnachrichten abrufen. Nutze diese Aktion wenn nach News, Nachrichten, was in der Welt passiert, aktuelle Lage oder Weltgeschehen gefragt wird. Schreibe einen kurzen Satz davor wie "Ich schaue nach den aktuellen Nachrichten."
 
 WENN Julian "Jarvis activate" sagt:
@@ -249,6 +264,12 @@ async def execute_action(action: dict) -> str:
         result = await browser_tools.fetch_news()
         return result
 
+    elif t == "TELEGRAM":
+        if not telegram.enabled:
+            return "Telegram ist nicht eingerichtet."
+        ok = await send_jarvis_message(p, voice=False)
+        return "Nachricht gesendet." if ok else "Telegram-Versand fehlgeschlagen."
+
     return ""
 
 
@@ -312,6 +333,18 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
             # Just opened browser, nothing to summarize
             return
 
+        if action["type"] == "TELEGRAM":
+            # Jarvis hat die Nachricht schon angekuendigt, nur bei Fehlern etwas sagen
+            if action_result != "Nachricht gesendet.":
+                msg = f"Die Nachricht ist leider nicht angekommen, {USER_ADDRESS}. {action_result}"
+                audio_err = await synthesize_speech(msg)
+                await ws.send_json({
+                    "type": "response",
+                    "text": msg,
+                    "audio": base64.b64encode(audio_err).decode("utf-8") if audio_err else "",
+                })
+            return
+
         # SEARCH, BROWSE, SCREEN — summarize results
         if action_result and "fehlgeschlagen" not in action_result:
             summary_resp = await ai.messages.create(
@@ -332,6 +365,130 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
             "text": summary,
             "audio": base64.b64encode(audio2).decode("utf-8") if audio2 else "",
         })
+
+
+# ---------- Telegram: Nachrichten von Jarvis ----------
+NOTIFY_STATE_PATH = os.path.join(os.path.dirname(__file__), "notify_state.json")
+
+
+def load_notify_state() -> dict:
+    try:
+        with open(NOTIFY_STATE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_notify_state(state: dict):
+    with open(NOTIFY_STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump(state, f)
+
+
+async def send_jarvis_message(text: str, voice: bool = TELEGRAM_VOICE) -> bool:
+    """Text an Telegram schicken, optional zusaetzlich als Sprachnachricht mit Jarvis-Stimme."""
+    ok = await telegram.send_text(text)
+    if ok and voice:
+        audio = await synthesize_speech(text)
+        if audio:
+            await telegram.send_voice(audio)
+    return ok
+
+
+def deadline_lines() -> list[str]:
+    lines = []
+    for p in load_projects():
+        if p.get("status") == "fertig":
+            continue
+        d = project_days_left(p)
+        if d is None or d > 1:
+            continue
+        when = "ist heute faellig" if d == 0 else "ist morgen faellig" if d == 1 else f"ist seit {-d} Tagen ueberfaellig"
+        lines.append(f"{p.get('name', '?')} {when} (Fortschritt {project_progress(p)}%)")
+    return lines
+
+
+async def jarvis_write(instruction: str) -> str:
+    resp = await ai.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        system=get_system_prompt() + "\n\nDu schreibst jetzt eine Nachricht, die per Telegram aufs Handy geschickt und vorgelesen wird. KEINE Aktionen, KEINE Tags in eckigen Klammern, kein Markdown.",
+        messages=[{"role": "user", "content": instruction}],
+    )
+    text, _ = extract_action(resp.content[0].text)
+    return text.strip()
+
+
+async def send_morning_briefing() -> bool:
+    await asyncio.to_thread(refresh_data)
+    deadlines = deadline_lines()
+    extra = (" Weise besonders auf diese Deadlines hin: " + "; ".join(deadlines) + ".") if deadlines else ""
+    text = await jarvis_write(
+        "Schreibe das Morgen-Briefing: Begruessung passend zur Uhrzeit, Wetter in einem Satz, "
+        "ein kurzer Ueberblick ueber Aufgaben und offene Projekte, und ein trockener Kommentar zum Abschluss. "
+        "Maximal 5 Saetze." + extra
+    )
+    return await send_jarvis_message(text)
+
+
+async def send_deadline_alert() -> bool:
+    deadlines = deadline_lines()
+    if not deadlines:
+        return True  # nichts zu melden, gilt fuer heute als erledigt
+    text = await jarvis_write(
+        "Warne kurz und hoeflich-spitz vor diesen Projekt-Deadlines, maximal 3 Saetze: " + "; ".join(deadlines)
+    )
+    return await send_jarvis_message(text)
+
+
+SCHEDULED_MESSAGES = [
+    ("briefing", TELEGRAM_BRIEFING_TIME, send_morning_briefing),
+    ("deadlines", TELEGRAM_DEADLINE_TIME, send_deadline_alert),
+]
+
+
+async def telegram_scheduler():
+    """Prueft jede halbe Minute, ob eine geplante Nachricht faellig ist (max. 1x pro Tag, bis 60 Min. nach Termin)."""
+    while True:
+        try:
+            now = datetime.now()
+            state = load_notify_state()
+            for name, at, job in SCHEDULED_MESSAGES:
+                if not at or state.get(name) == now.date().isoformat():
+                    continue
+                hour, minute = (int(x) for x in at.split(":"))
+                due = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                if not (due <= now < due + timedelta(minutes=60)):
+                    continue
+                print(f"[jarvis] Telegram: sende {name}", flush=True)
+                if await job():
+                    state[name] = now.date().isoformat()
+                    save_notify_state(state)
+        except Exception as e:
+            print(f"[jarvis] Telegram-Zeitplan Fehler: {e}", flush=True)
+        await asyncio.sleep(30)
+
+
+@app.on_event("startup")
+async def start_telegram_scheduler():
+    if telegram.enabled:
+        asyncio.create_task(telegram_scheduler())
+        print(f"[jarvis] Telegram aktiv (Briefing {TELEGRAM_BRIEFING_TIME or 'aus'}, Deadlines {TELEGRAM_DEADLINE_TIME or 'aus'})", flush=True)
+    else:
+        print("[jarvis] Telegram nicht eingerichtet (python scripts/telegram-setup.py)", flush=True)
+
+
+@app.post("/api/telegram/test")
+async def telegram_test(kind: str = "hallo"):
+    """Testnachricht ausloesen: kind = hallo | briefing | deadlines"""
+    if not telegram.enabled:
+        raise HTTPException(status_code=400, detail="Telegram ist nicht eingerichtet")
+    if kind == "briefing":
+        ok = await send_morning_briefing()
+    elif kind == "deadlines":
+        ok = await send_jarvis_message("\n".join(deadline_lines()) or f"Keine Deadlines in Sicht, {USER_ADDRESS}.", voice=False)
+    else:
+        ok = await send_jarvis_message(f"Systeme online, {USER_ADDRESS}. Ab sofort erreiche ich Sie auch unterwegs.")
+    return {"sent": ok}
 
 
 @app.websocket("/ws")

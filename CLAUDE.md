@@ -37,6 +37,7 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 ├── server.py              # FastAPI Backend (Claude Haiku + ElevenLabs TTS)
 ├── browser_tools.py       # Playwright Browser-Steuerung
 ├── screen_capture.py      # Screenshot + Claude Vision
+├── telegram_notify.py     # Telegram-Bot: Text- und Sprachnachrichten aufs Handy
 ├── frontend/
 │   ├── index.html         # Jarvis Web-UI
 │   ├── projects.html      # Projekt-Zentrale (/projects), speichert in projects.json
@@ -44,5 +45,6 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 │   └── style.css          # Dark Theme mit Orb-Animation
 └── scripts/
     ├── clap-trigger.py    # Doppelklatschen-Erkennung
+    ├── telegram-setup.py  # Telegram-Bot verbinden (Token + Chat-ID in config.json)
     └── launch-session.ps1 # Startet alle Apps + Jarvis
 ```

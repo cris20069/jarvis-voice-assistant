@@ -9,5 +9,12 @@
   "spotify_track": "spotify:track:YOUR_TRACK_ID",
   "browser_url": "https://your-website.com",
   "obsidian_inbox_path": "C:\\Users\\YOUR_USER\\path\\to\\obsidian\\inbox",
-  "apps": ["obsidian://open"]
+  "apps": [
+    "obsidian://open"
+  ],
+  "telegram_bot_token": "",
+  "telegram_chat_id": "",
+  "telegram_briefing_time": "07:30",
+  "telegram_deadline_time": "18:00",
+  "telegram_voice": true
 }
