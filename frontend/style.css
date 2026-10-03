@@ -99,7 +99,8 @@ body {
     font-size: 14px;
 }
 
-#projects-link {
+#projects-link,
+#finance-link {
     position: fixed;
     top: 20px;
     right: 24px;
@@ -112,6 +113,11 @@ body {
     padding: 6px 12px;
 }
 
-#projects-link:hover {
+#projects-link:hover,
+#finance-link:hover {
     background: rgba(74, 158, 255, 0.12);
+}
+
+#finance-link {
+    right: 130px;
 }

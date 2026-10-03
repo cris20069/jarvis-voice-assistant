@@ -643,6 +643,80 @@ async def greeting_done():
     return {"greetings": GREETINGS_DONE}
 
 
+# ---------- Finanz-Cockpit (frontend/finanzen.html) ----------
+FINANCE_PATH = os.path.join(os.path.dirname(__file__), "finance.json")
+FINANCE_KINDS = ("tx", "inv", "sub")
+
+
+def load_finance() -> dict:
+    try:
+        with open(FINANCE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
+    return {**{k: [] for k in FINANCE_KINDS}, "goal": {}, **{k: v for k, v in data.items() if k in (*FINANCE_KINDS, "goal")}}
+
+
+def save_finance(data: dict):
+    tmp = FINANCE_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, FINANCE_PATH)
+
+
+@app.get("/finanzen")
+async def serve_finance():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "finanzen.html"))
+
+
+@app.get("/api/finance")
+async def get_finance():
+    return load_finance()
+
+
+@app.put("/api/finance/goal")
+async def put_finance_goal(request: Request):
+    goal = await request.json()
+    if not isinstance(goal, dict) or not str(goal.get("name", "")).strip():
+        raise HTTPException(status_code=400, detail="Sparziel braucht einen Namen")
+    data = load_finance()
+    data["goal"] = goal
+    save_finance(data)
+    return goal
+
+
+@app.delete("/api/finance/goal")
+async def delete_finance_goal():
+    data = load_finance()
+    data["goal"] = {}
+    save_finance(data)
+    return {"deleted": "goal"}
+
+
+@app.put("/api/finance/{kind}/{item_id}")
+async def put_finance_item(kind: str, item_id: str, request: Request):
+    if kind not in FINANCE_KINDS or not PROJECT_ID_PATTERN.match(item_id):
+        raise HTTPException(status_code=400, detail="Ungueltige Anfrage")
+    item = await request.json()
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=400, detail="Eintrag muss ein Objekt sein")
+    item["id"] = item_id
+    data = load_finance()
+    data[kind] = [x for x in data[kind] if x.get("id") != item_id] + [item]
+    save_finance(data)
+    return item
+
+
+@app.delete("/api/finance/{kind}/{item_id}")
+async def delete_finance_item(kind: str, item_id: str):
+    if kind not in FINANCE_KINDS or not PROJECT_ID_PATTERN.match(item_id):
+        raise HTTPException(status_code=400, detail="Ungueltige Anfrage")
+    data = load_finance()
+    data[kind] = [x for x in data[kind] if x.get("id") != item_id]
+    save_finance(data)
+    return {"deleted": item_id}
+
+
 @app.get("/dashboard")
 async def serve_dashboard():
     return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "dashboard.html"))
@@ -689,5 +763,6 @@ if __name__ == "__main__":
     print(f"  http://localhost:8340", flush=True)
     print(f"  Projekte: http://localhost:8340/projects", flush=True)
     print(f"  Dashboard: http://localhost:8340/dashboard", flush=True)
+    print(f"  Finanzen: http://localhost:8340/finanzen", flush=True)
     print("=" * 50, flush=True)
     uvicorn.run(app, host="0.0.0.0", port=8340)

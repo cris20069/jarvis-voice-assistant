@@ -6,3 +6,5 @@ config.json
 projects.json
 projects.json.tmp
 notify_state.json
+finance.json
+finance.json.tmp

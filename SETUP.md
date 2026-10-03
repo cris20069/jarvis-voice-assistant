@@ -142,6 +142,18 @@ Fuer die Systemwerte wird `psutil` gebraucht: `pip install -r requirements.txt`.
 
 ---
 
+## Finanz-Cockpit
+
+`http://localhost:8340/finanzen` zeigt Einnahmen, Ausgaben, Saldo und Sparquote pro Monat, den Verlauf der letzten 6 Monate, Ausgaben nach Kategorie, offene und ueberfaellige Rechnungen, Abos mit Fixkosten und ein Sparziel.
+
+- **+ Buchung**, **+ Rechnung**, **+ Abo**: Eintraege anlegen. Betraege im deutschen Format, z.B. `1.234,56`.
+- **Bezahlt** bei einer Rechnung bucht die Einnahme automatisch.
+- Pfeiltasten wechseln den Monat, `N` legt eine Buchung an.
+- Die Daten liegen in `finance.json` auf deinem PC und sind per `.gitignore` aus dem Repo ausgeschlossen.
+- Ohne Daten kannst du mit **Beispieldaten laden** das Cockpit ausprobieren. Beispiele sind markiert und lassen sich mit einem Klick entfernen.
+
+---
+
 ## Nachrichten aufs Handy (Telegram, kostenlos)
 
 Jarvis kann dir per Telegram schreiben — als Text und als Sprachnachricht mit seiner Stimme.
