@@ -7,6 +7,14 @@ let ws;
 let audioQueue = [];
 let isPlaying = false;
 let audioUnlocked = false;
+let awaitingGreeting = false;
+
+// Meldet dem Server einmal, dass die Begruessung fertig ist (Startskript schiebt dann die Fenster)
+function greetingDone() {
+    if (!awaitingGreeting) return;
+    awaitingGreeting = false;
+    fetch('/api/greeting-done', { method: 'POST' }).catch(() => {});
+}
 
 // Unlock audio on ANY user interaction
 function unlockAudio() {
@@ -28,6 +36,7 @@ function connect() {
         console.log('[jarvis] WebSocket connected');
         status.textContent = 'Klicke einmal irgendwo, dann spricht Jarvis.';
         setOrbState('thinking');
+        awaitingGreeting = true;
         ws.send(JSON.stringify({ text: 'Jarvis activate' }));
     };
     ws.onmessage = (event) => {
@@ -38,6 +47,7 @@ function connect() {
                 queueAudio(data.audio);
             } else {
                 setOrbState('idle');
+                greetingDone();
                 setTimeout(startListening, 500);
             }
         } else if (data.type === 'status') {
@@ -58,6 +68,7 @@ function queueAudio(base64Audio) {
 function playNext() {
     if (audioQueue.length === 0) {
         isPlaying = false;
+        greetingDone();
         setOrbState('listening');
         status.textContent = '';
         setTimeout(startListening, 500);

@@ -122,14 +122,21 @@ Zweimal klatschen → Spotify, VS Code, Obsidian, Chrome mit Jarvis starten auto
 
 `http://localhost:8340/dashboard` zeigt alles Wichtige auf einen Blick: Uhr, Wetter, CPU/RAM/Festplatte, Projekte mit Fortschritt und Fristen, Obsidian-Aufgaben, das Jarvis-Log und ein Laufband mit Meldungen. Mit **F** schaltest du den Vollbildmodus um.
 
-Beim Doppelklatschen sortiert `launch-session.ps1` die Fenster nach Monitor (von links nach rechts gezaehlt, 0 = ganz links):
+Beim Doppelklatschen laeuft das so ab (Monitore von links nach rechts gezaehlt, 0 = ganz links):
 
-| Monitor | Standard | Einstellung in `config.json` |
+1. VS Code, Obsidian, Chrome (Jarvis) und Spotify erscheinen als Viertel auf dem **mittleren** Monitor.
+2. Jarvis begruesst dich.
+3. Sobald er fertig gesprochen hat, **wandern die 4 Fenster auf den linken Monitor**.
+4. In der Mitte oeffnet sich das **Dashboard** als Vollbild-Fenster.
+
+| Einstellung in `config.json` | Bedeutung | Standard |
 |---|---|---|
-| Links | VS Code, Obsidian, Chrome (Jarvis), Spotify als Viertel | `"monitor_apps": 0` |
-| Mitte | Dashboard als Vollbild-Fenster | `"monitor_dashboard": 1` |
+| `monitor_dashboard` | Monitor, auf dem alles startet und das Dashboard bleibt | `1` (Mitte) |
+| `monitor_apps` | Monitor, auf den die 4 Fenster nach der Begruessung wandern | `0` (links) |
 
-Mit zwei Monitoren landet das Dashboard rechts. Mit nur einem Monitor bleibt alles wie vorher und das Dashboard wird nicht gestartet. Falls die Reihenfolge nicht stimmt (Windows nummeriert nach der Anordnung in den Anzeigeeinstellungen), tausche einfach die Zahlen.
+Mit zwei Monitoren landet das Dashboard rechts. Mit nur einem Monitor bleibt alles wie vorher und das Dashboard wird nicht gestartet. Falls die Reihenfolge nicht stimmt (Windows nummeriert nach der Anordnung in den Anzeigeeinstellungen), tausche die Zahlen.
+
+Technisch: Der Browser meldet das Ende der Begruessung an `/api/greeting-done`, das Startskript wartet darauf (hoechstens 60 Sekunden) und schiebt dann die Fenster.
 
 Fuer die Systemwerte wird `psutil` gebraucht: `pip install -r requirements.txt`.
 

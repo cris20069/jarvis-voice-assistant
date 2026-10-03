@@ -626,6 +626,23 @@ async def serve_index():
     return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "index.html"))
 
 
+# Signal "Begruessung zu Ende": Der Browser meldet, wenn Jarvis fertig gesprochen hat.
+# launch-session.ps1 wartet darauf und schiebt erst dann die Fenster auf den linken Monitor.
+GREETINGS_DONE = 0
+
+
+@app.get("/api/greeting")
+async def greeting_status():
+    return {"greetings": GREETINGS_DONE}
+
+
+@app.post("/api/greeting-done")
+async def greeting_done():
+    global GREETINGS_DONE
+    GREETINGS_DONE += 1
+    return {"greetings": GREETINGS_DONE}
+
+
 @app.get("/dashboard")
 async def serve_dashboard():
     return FileResponse(os.path.join(os.path.dirname(__file__), "frontend", "dashboard.html"))
