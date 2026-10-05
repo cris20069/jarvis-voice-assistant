@@ -39,6 +39,7 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 ├── screen_capture.py      # Screenshot + Claude Vision
 ├── telegram_notify.py     # Telegram-Bot: Text- und Sprachnachrichten aufs Handy
 ├── finance.json           # Finanzdaten (gitignored, wird automatisch angelegt)
+├── gym/                   # Jarvis Gym: eigenstaendige Handy-PWA (kein Server, keine KI, kostenlos)
 ├── frontend/
 │   ├── index.html         # Jarvis Web-UI
 │   ├── dashboard.html     # Dashboard fuer den mittleren Monitor (/dashboard)
