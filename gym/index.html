@@ -178,20 +178,37 @@ button{font:inherit;color:inherit}
 .setrow .w{font:700 22px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .setrow .w small{font:500 11px/1 var(--f-mono);color:var(--mute);margin:0 6px 0 3px}
 .pr{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 var(--f-mono);letter-spacing:.12em;padding:5px 8px;border-radius:999px;color:#2b1a00;background:linear-gradient(180deg,var(--gold-hi),var(--gold));box-shadow:0 0 14px rgba(242,179,61,.5)}
-.inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.field label{display:block;font:700 9.5px/1 var(--f-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin:0 0 7px 2px}
-.stepper{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;height:58px;border-radius:13px;border:1px solid var(--line-2);background:rgba(0,0,0,.4);overflow:hidden;transition:border-color .15s,box-shadow .15s}
-.stepper:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,179,61,.14)}
-.stepper button{border:0;background:rgba(255,255,255,.035);display:grid;place-items:center;cursor:pointer;color:var(--mute)}
-.stepper button:active{background:rgba(255,255,255,.12);color:var(--text)}
-.stepper input{width:100%;min-width:0;border:0;background:transparent;text-align:center;font:800 28px/1 var(--f-display);color:var(--text);padding:0;margin:0;font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
-.stepper input:focus{outline:none}
-.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.sets3{display:grid;gap:8px}
+.srow{display:grid;grid-template-columns:32px minmax(0,1.15fr) minmax(0,1fr) 52px;gap:8px;align-items:center}
+.srow.head{font:700 9px/1 var(--f-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:-2px}
+.srow.head span{padding-left:2px}
+.srow .n{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font:700 13px/1 var(--f-mono);background:rgba(255,255,255,.05);color:var(--mute);border:1px solid var(--line)}
+.cell{display:flex;align-items:center;gap:6px;height:54px;padding:0 12px;border-radius:13px;border:1px solid var(--line-2);background:rgba(0,0,0,.4);cursor:text;transition:border-color .15s,box-shadow .15s,background .15s;min-width:0}
+.cell input,.cell b{flex:1;min-width:0;width:100%;border:0;background:transparent;padding:0;margin:0;font:800 26px/1 var(--f-display);color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
+.cell input::placeholder{color:var(--dim)}
+.cell input:focus{outline:none}
+.cell span{font:700 9.5px/1 var(--f-mono);letter-spacing:.08em;color:var(--mute);text-transform:uppercase;flex:none}
+.cell:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,179,61,.14)}
+.chk{width:52px;height:54px;border-radius:13px;display:grid;place-items:center;cursor:pointer;border:1px solid var(--line-2);background:rgba(255,255,255,.035);color:var(--dim);transition:transform .08s,background .15s}
+.chk:active{transform:scale(.95)}
+.chk:disabled{cursor:default;opacity:.5}
+.srow.next .n{background:rgba(229,56,59,.14);color:var(--red-hi);border-color:rgba(229,56,59,.35)}
+.srow.next .chk{border-color:transparent;color:#fff;background:linear-gradient(180deg,var(--red-hi),var(--red) 45%,#c42528);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 22px -12px rgba(229,56,59,.95)}
+.srow.later .cell{background:rgba(0,0,0,.22)}
+.srow.later .cell input{color:var(--mute)}
+.srow.done .n{background:rgba(57,217,138,.14);color:var(--green);border-color:rgba(57,217,138,.35)}
+.srow.done .n.prn{background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#2b1a00;border-color:transparent;box-shadow:0 0 12px rgba(242,179,61,.5)}
+.srow.done .cell{background:rgba(57,217,138,.06);border-color:rgba(57,217,138,.22);cursor:default}
+.srow.done .chk{background:var(--green);border-color:transparent;color:#05210f;box-shadow:0 0 16px -4px rgba(57,217,138,.7)}
+.setbtns{display:flex;gap:8px}
+.setbtns .btn{flex:1}
+.count.ok{color:var(--green);background:rgba(57,217,138,.12);border-color:rgba(57,217,138,.35)}
+.ex.complete{border-color:rgba(57,217,138,.28)}
 .addex{display:flex;gap:8px}
 .addex input{flex:1}
 
 /* forms */
-input[type=text]:not(.stepper input),.setting input[type=number],select,textarea{width:100%;min-height:50px;background:rgba(0,0,0,.35);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font:500 17px/1.35 var(--f-body);padding:11px 13px;margin:0}
+input[type=text]:not(.cell input),.setting input[type=number],select,textarea{width:100%;min-height:50px;background:rgba(0,0,0,.35);border:1px solid var(--line-2);border-radius:12px;color:var(--text);font:500 17px/1.35 var(--f-body);padding:11px 13px;margin:0}
 textarea{resize:vertical;line-height:1.5}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,179,61,.14)}
 .editor{--tone:var(--red);display:grid;gap:10px}
@@ -317,7 +334,7 @@ const DEFAULT = {
   ],
   workouts: [],
   active: null,
-  settings: { rest: 90, goal: 3, repTarget: 8, step: 2.5, speak: false }
+  settings: { rest: 90, goal: 3, sets: 3, repTarget: 8, step: 2.5, speak: false }
 };
 
 function cleanSets(a) {
@@ -348,7 +365,7 @@ function sanitize(o) {
   }
   const s = o.settings || {};
   st.settings = {
-    rest: clamp(num(s.rest, 90), 10, 600), goal: clamp(Math.round(num(s.goal, 3)), 1, 14),
+    rest: clamp(num(s.rest, 90), 10, 600), goal: clamp(Math.round(num(s.goal, 3)), 1, 14), sets: clamp(Math.round(num(s.sets, 3)), 1, 10),
     repTarget: clamp(Math.round(num(s.repTarget, 8)), 1, 30), step: clamp(num(s.step, 2.5), 0.25, 25), speak: !!s.speak
   };
   return st;
@@ -535,7 +552,7 @@ function addSet(ex, kg, reps, viaVoice) {
   a.restEnd = Date.now() + a.restLen;
   save(); render(); vibrate(30);
   if (pr) toast(`Neuer Rekord: ${ex} ${fmtKg(kg)} kg`, 'gold');
-  else toast(`${ex}: ${fmtKg(kg)} kg × ${reps} gespeichert`);
+  else if (viaVoice) toast(`${ex}: ${fmtKg(kg)} kg × ${reps} gespeichert`);
   if (viaVoice) say(pr ? 'Neuer Rekord!' : 'Gespeichert');
 }
 function removeSet(set) {
@@ -760,35 +777,56 @@ function viewActive() {
 
 function exCard(name, i) {
   const a = S.active, last = lastSets(name), sug = suggest(name);
-  const d = a.draft[name] || (a.draft[name] = { kg: sug ? fmtKg(sug.kg) : '', reps: sug ? String(sug.reps) : '' });
+  const dr = a.draft[name] || (a.draft[name] = { n: 0, rows: {} });
   const mine = a.sets.filter(s => s.ex === name);
+  const total = Math.max(dr.n || Math.round(S.settings.sets), mine.length);
   const best = Math.max(0, ...allSets(name).map(s => s.kg));
-  const kg = h('input', { type: 'text', id: `kg-${i}`, inputmode: 'decimal', autocomplete: 'off', placeholder: '0', value: d.kg, oninput: e => { d.kg = e.target.value; focusEx = i; } });
-  const reps = h('input', { type: 'text', id: `reps-${i}`, inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off', placeholder: '0', value: d.reps, oninput: e => { d.reps = e.target.value; focusEx = i; } });
-  const stepField = (label, inp, key, delta, min) => {
-    const nudge = dl => () => { inp.value = fmtKg(Math.max(min, Math.round(((parseNum(inp.value) || 0) + dl) * 100) / 100)); d[key] = inp.value; focusEx = i; };
-    return h('div', { class: 'field' }, h('label', { for: inp.id }, label),
-      h('div', { class: 'stepper' },
-        h('button', { type: 'button', 'aria-label': `${label} verringern`, onclick: nudge(-delta) }, icon(I.minus, 18)), inp,
-        h('button', { type: 'button', 'aria-label': `${label} erhöhen`, onclick: nudge(delta) }, icon(I.plus, 18))));
-  };
-  return h('section', { class: 'panel ex' + (mine.length ? ' has' : '') },
+  const vals = s => ({ kg: s.kg > 0 ? fmtKg(s.kg) : '', reps: String(s.reps) });
+  const base = sug ? vals(sug) : last[0] ? vals(last[0]) : { kg: '', reps: '' };
+  const valAt = j => j < mine.length ? vals(mine[j]) : dr.rows[j] || (j === 0 ? base : valAt(j - 1));
+  const pend = [];
+  const rows = [h('div', { class: 'srow head', 'aria-hidden': 'true' }, h('span', {}, 'Satz'), h('span', {}, 'Gewicht'), h('span', {}, 'Wdh.'), h('span', {}))];
+  for (let j = 0; j < total; j++) {
+    if (j < mine.length) {
+      const s = mine[j];
+      rows.push(h('div', { class: 'srow done' },
+        h('span', { class: 'n' + (s.pr ? ' prn' : ''), title: s.pr ? 'Neuer Rekord' : null }, s.pr ? icon(I.trophy, 15) : j + 1),
+        h('div', { class: 'cell' }, h('b', {}, s.kg > 0 ? fmtKg(s.kg) : '–'), h('span', {}, 'kg')),
+        h('div', { class: 'cell' }, h('b', {}, s.reps), h('span', {}, 'Wdh.')),
+        h('button', { class: 'chk', 'aria-label': `Satz ${j + 1} rückgängig machen`, onclick: () => { if (confirm(`Satz ${j + 1} von ${name} rückgängig machen?`)) removeSet(s); } }, icon(I.check, 22))));
+      continue;
+    }
+    const v = valAt(j), isNext = j === mine.length;
+    const kgIn = h('input', { type: 'text', id: `kg-${i}-${j}`, inputmode: 'decimal', autocomplete: 'off', placeholder: '0', value: v.kg, 'aria-label': `Satz ${j + 1}: Gewicht in kg` });
+    const repsIn = h('input', { type: 'text', id: `reps-${i}-${j}`, inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off', placeholder: '0', value: v.reps, 'aria-label': `Satz ${j + 1}: Wiederholungen` });
+    pend.push({ j, kgIn, repsIn });
+    const onEdit = () => {
+      dr.rows[j] = { kg: kgIn.value, reps: repsIn.value }; focusEx = i;
+      pend.forEach(q => { if (q.j > j && !dr.rows[q.j]) { q.kgIn.value = kgIn.value; q.repsIn.value = repsIn.value; } });
+    };
+    kgIn.addEventListener('input', onEdit);
+    repsIn.addEventListener('input', onEdit);
+    rows.push(h('div', { class: 'srow ' + (isNext ? 'next' : 'later') },
+      h('span', { class: 'n' }, j + 1),
+      h('label', { class: 'cell' }, kgIn, h('span', {}, 'kg')),
+      h('label', { class: 'cell' }, repsIn, h('span', {}, 'Wdh.')),
+      h('button', { class: 'chk', disabled: !isNext, 'aria-label': `Satz ${j + 1} abhaken`, onclick: () => { focusEx = i; addSet(name, parseNum(kgIn.value.trim() || '0'), parseNum(repsIn.value)); } }, icon(I.check, 22))));
+  }
+  const doneAll = mine.length >= total;
+  return h('section', { class: 'panel ex' + (doneAll ? ' complete' : mine.length ? ' has' : '') },
     h('div', { class: 'ex-head' },
       h('div', {}, h('div', { class: 'ex-idx' }, `Übung ${i + 1} / ${a.exercises.length}`), h('h3', {}, name)),
       mine.length
-        ? h('span', { class: 'count' }, `${mine.length} ${mine.length === 1 ? 'Satz' : 'Sätze'}`)
+        ? h('span', { class: 'count' + (doneAll ? ' ok' : '') }, doneAll ? 'Fertig' : `${mine.length} / ${total} Sätze`)
         : h('button', { class: 'btn sm icon quiet', 'aria-label': `${name} entfernen`, onclick: () => { a.exercises.splice(i, 1); save(); render(); } }, icon(I.x, 16))),
     h('div', { class: 'facts' },
       last.length ? fact('Zuletzt', setsLabel(last)) : h('span', { class: 'fact' }, 'Erstes Mal'),
       sug && fact('Ziel', sug.kg > 0 ? `${fmtKg(sug.kg)} kg × ${sug.reps}` : `${sug.reps} Wdh.`, 'sug'),
       best > 0 && fact('Rekord', `${fmtKg(best)} kg`, 'rec')),
-    mine.length > 0 && h('ol', { class: 'setlist' }, mine.map((s, n) => h('li', { class: 'setrow' },
-      h('span', { class: 'n' }, n + 1),
-      s.kg > 0 ? h('span', { class: 'w' }, fmtKg(s.kg), h('small', {}, 'kg'), '× ', s.reps) : h('span', { class: 'w' }, s.reps, h('small', {}, 'Wdh. · Körpergewicht')),
-      s.pr ? h('span', { class: 'pr' }, icon(I.trophy, 12), 'PR') : h('span', {}),
-      h('button', { class: 'btn sm icon quiet', 'aria-label': `Satz ${n + 1} löschen`, onclick: () => removeSet(s) }, icon(I.x, 15))))),
-    h('div', { class: 'inputs' }, stepField('Gewicht · kg', kg, 'kg', S.settings.step, 0), stepField('Wiederholungen', reps, 'reps', 1, 1)),
-    h('button', { class: 'btn primary', onclick: () => { focusEx = i; addSet(name, parseNum(kg.value), parseNum(reps.value)); } }, icon(I.check, 20), 'Satz speichern'));
+    h('div', { class: 'sets3' }, rows),
+    h('div', { class: 'setbtns' },
+      h('button', { class: 'btn sm ghost', onclick: () => { dr.n = total + 1; render(); } }, icon(I.plus, 16), 'Satz'),
+      total > Math.max(1, mine.length) && h('button', { class: 'btn sm ghost', onclick: () => { dr.n = total - 1; render(); } }, icon(I.minus, 16), 'Satz')));
 }
 
 function viewPlaene() {
@@ -820,6 +858,7 @@ function settingsCard() {
   return h('section', { class: 'panel' },
     row('Pause', 'Sekunden zwischen den Sätzen', 'rest', '10', '600', '5'),
     row('Wochenziel', 'Trainings pro Woche', 'goal', '1', '14', '1'),
+    row('Sätze pro Übung', 'So viele Zeilen zeigt jede Übung', 'sets', '1', '10', '1'),
     row('Ziel-Wiederholungen', 'Ab dann schlägt Jarvis mehr Gewicht vor', 'repTarget', '1', '30', '1'),
     row('Gewichtsschritt', 'Kilo pro Steigerung', 'step', '0.25', '25', '0.25'),
     h('div', { class: 'setting' }, h('label', { for: 'set-speak' }, h('b', {}, 'Sprachausgabe'), h('span', {}, 'Bestätigung nach der Spracheingabe')), speak));
