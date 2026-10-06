@@ -1,17 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="bg" cx="20%" cy="10%" r="90%"><stop offset="0" stop-color="#3a1214"/><stop offset=".55" stop-color="#0b0a0d"/></radialGradient>
-    <linearGradient id="db" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5a5d"/><stop offset="1" stop-color="#c42528"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4142f"/><stop offset=".5" stop-color="#6a1030"/><stop offset="1" stop-color="#0c1f55"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff6a6d" stop-opacity=".7"/><stop offset=".6" stop-color="#ff3b45" stop-opacity=".18"/><stop offset="1" stop-color="#ff3b45" stop-opacity="0"/></radialGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9d3ea"/></linearGradient>
+    <radialGradient id="vig" cx=".5" cy=".5" r=".72"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="186" fill="none" stroke="#2a2430" stroke-width="20"/>
-  <circle cx="256" cy="256" r="186" fill="none" stroke="#5fdcff" stroke-width="20" stroke-linecap="round" stroke-dasharray="780 1169" transform="rotate(-90 256 256)"/>
-  <circle cx="256" cy="256" r="140" fill="none" stroke="#f2b33d" stroke-width="3" stroke-dasharray="4 14"/>
-  <g fill="url(#db)">
-    <rect x="156" y="240" width="200" height="32" rx="8"/>
-    <rect x="124" y="190" width="38" height="132" rx="10"/>
-    <rect x="350" y="190" width="38" height="132" rx="10"/>
-    <rect x="96" y="216" width="24" height="80" rx="8"/>
-    <rect x="392" y="216" width="24" height="80" rx="8"/>
+  <g stroke="#ffffff" stroke-opacity=".2" stroke-width="3" stroke-linecap="round">
+        <line x1="256" y1="256" x2="302.1" y2="-161.5"/>
+    <line x1="256" y1="256" x2="478.7" y2="-100.1"/>
+    <line x1="256" y1="256" x2="611.1" y2="31.8"/>
+    <line x1="256" y1="256" x2="673.3" y2="208.1"/>
+    <line x1="256" y1="256" x2="652.7" y2="393.8"/>
+    <line x1="256" y1="256" x2="553.6" y2="552.3"/>
+    <line x1="256" y1="256" x2="395.6" y2="652.1"/>
+    <line x1="256" y1="256" x2="209.9" y2="673.5"/>
+    <line x1="256" y1="256" x2="33.3" y2="612.1"/>
+    <line x1="256" y1="256" x2="-99.1" y2="480.2"/>
+    <line x1="256" y1="256" x2="-161.3" y2="303.9"/>
+    <line x1="256" y1="256" x2="-140.7" y2="118.2"/>
+    <line x1="256" y1="256" x2="-41.6" y2="-40.3"/>
+    <line x1="256" y1="256" x2="116.4" y2="-140.1"/>
+    <path d="M262.8 194.4 Q273.1 206.9 288.9 203.4 Q292.7 219.2 308.4 222.9 Q305.0 238.7 317.6 248.9 Q307.7 261.7 314.6 276.3 Q300.1 283.6 299.9 299.7 Q283.8 300.0 276.6 314.5 Q261.9 307.6 249.2 317.6 Q238.9 305.1 223.1 308.6 Q219.3 292.8 203.6 289.1 Q207.0 273.3 194.4 263.1 Q204.3 250.3 197.4 235.7 Q211.9 228.4 212.1 212.3 Q228.2 212.0 235.4 197.5 Q250.1 204.4 262.8 194.4" fill="none"/>
+    <path d="M267.9 148.7 Q285.7 170.5 313.3 164.4 Q319.9 191.8 347.3 198.3 Q341.4 225.9 363.3 243.7 Q346.0 265.9 358.0 291.4 Q332.8 304.0 332.5 332.2 Q304.3 332.6 291.9 357.9 Q266.3 346.0 244.1 363.3 Q226.3 341.5 198.7 347.6 Q192.1 320.2 164.7 313.7 Q170.6 286.1 148.7 268.3 Q166.0 246.1 154.0 220.6 Q179.2 208.0 179.5 179.8 Q207.7 179.4 220.1 154.1 Q245.7 166.0 267.9 148.7" fill="none"/>
+    <path d="M273.3 99.0 Q299.5 130.9 339.8 122.0 Q349.5 162.1 389.6 171.6 Q380.9 212.0 413.0 238.0 Q387.7 270.5 405.2 307.9 Q368.3 326.2 368.0 367.5 Q326.7 368.0 308.5 405.0 Q271.1 387.6 238.7 413.0 Q212.5 381.1 172.2 390.0 Q162.5 349.9 122.4 340.4 Q131.1 300.0 99.0 274.0 Q124.3 241.5 106.8 204.1 Q143.7 185.8 144.0 144.5 Q185.3 144.0 203.5 107.0 Q240.9 124.4 273.3 99.0" fill="none"/>
+    <path d="M279.5 43.3 Q314.9 86.5 369.5 74.6 Q382.6 128.8 436.9 141.7 Q425.2 196.4 468.6 231.6 Q434.3 275.7 458.1 326.2 Q408.1 351.1 407.7 407.0 Q351.8 407.7 327.1 457.8 Q276.5 434.3 232.5 468.7 Q197.1 425.5 142.5 437.4 Q129.4 383.2 75.1 370.3 Q86.8 315.6 43.4 280.4 Q77.7 236.3 53.9 185.8 Q103.9 160.9 104.3 105.0 Q160.2 104.3 184.9 54.2 Q235.5 77.7 279.5 43.3" fill="none"/>
+    <path d="M286.3 -18.3 Q331.9 37.4 402.3 22.0 Q419.3 92.0 489.4 108.6 Q474.3 179.1 530.2 224.5 Q486.0 281.4 516.7 346.6 Q452.2 378.7 451.6 450.7 Q379.5 451.7 347.7 516.3 Q282.4 485.9 225.7 530.3 Q180.1 474.6 109.7 490.0 Q92.7 420.0 22.6 403.4 Q37.7 332.9 -18.2 287.5 Q26.0 230.6 -4.7 165.4 Q59.8 133.3 60.4 61.3 Q132.5 60.3 164.3 -4.3 Q229.6 26.1 286.3 -18.3" fill="none"/>
+    <path d="M293.9 -86.9 Q350.9 -17.2 438.9 -36.5 Q460.1 51.0 547.7 71.8 Q528.8 159.9 598.7 216.6 Q543.5 287.8 581.9 369.2 Q501.3 409.4 500.5 499.4 Q410.4 500.6 370.7 581.4 Q289.0 543.4 218.1 598.9 Q161.1 529.2 73.1 548.5 Q51.9 461.0 -35.7 440.2 Q-16.8 352.1 -86.7 295.4 Q-31.5 224.2 -69.9 142.8 Q10.7 102.6 11.5 12.6 Q101.6 11.4 141.3 -69.4 Q223.0 -31.4 293.9 -86.9" fill="none"/>
   </g>
+  <rect width="512" height="512" fill="url(#vig)"/>
+  <circle cx="256" cy="256" r="170" fill="url(#glow)"/>
+  <g transform="rotate(-24 256 256)" fill="url(#steel)" style="filter:drop-shadow(0 0 14px rgba(255,90,93,.9))">
+    <rect x="166" y="241" width="180" height="30" rx="8"/>
+    <rect x="132" y="186" width="40" height="140" rx="11"/>
+    <rect x="340" y="186" width="40" height="140" rx="11"/>
+    <rect x="104" y="214" width="26" height="84" rx="9"/>
+    <rect x="382" y="214" width="26" height="84" rx="9"/>
+  </g>
+  <g fill="none" stroke="#ffcf6b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 128V70h58"/><path d="M384 70h58v58"/><path d="M442 384v58h-58"/><path d="M128 442H70v-58"/>
+  </g>
+  <circle cx="104" cy="104" r="11" fill="#ff3b45" stroke="#fff" stroke-width="3"/>
 </svg>
