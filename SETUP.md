@@ -224,6 +224,27 @@ Nicht moeglich: Kommentare oder Direktnachrichten lesen/beantworten (dafuer gibt
 
 ---
 
+## Command Center: Fokus-Modus mit YouTube-Videos
+
+Das Dashboard (`/dashboard`) zeigt Projekte, Finanzen, Fristen, System und TikTok auf einen Blick. Stellst du Jarvis eine inhaltliche Frage, zoomt es in den Globus (wenn moeglich auf das passende Land) und zeigt Frage, Antwort und **3 passende YouTube-Videos**. Das kostet keinen zusaetzlichen Claude-Aufruf: Jarvis markiert das Thema unsichtbar in seiner Antwort.
+
+**YouTube-Schluessel (kostenlos, ca. 100 Suchen pro Tag)**
+1. **console.cloud.google.com** oeffnen, ein Projekt anlegen (z.B. "Jarvis").
+2. Unter **APIs & Dienste → Bibliothek** die **YouTube Data API v3** aktivieren.
+3. Unter **APIs & Dienste → Anmeldedaten** → **Anmeldedaten erstellen → API-Schluessel**.
+4. Den Schluessel in `config.json` als `"youtube_api_key"` eintragen und `server.py` neu starten.
+
+Ohne Schluessel funktioniert der Zoom trotzdem, nur ohne Videos.
+
+Testen ohne zu sprechen (Server muss laufen, Dashboard offen):
+```
+curl -X POST "http://localhost:8340/api/focus/demo?topic=Polarlichter%20Island&place=Iceland"
+```
+
+Bedienung: **Esc** oder Klick schliesst den Fokus, **F** schaltet Vollbild. Nach 45 Sekunden schliesst er von selbst.
+
+---
+
 ## Was Jarvis kann
 
 - **"Wie ist das Wetter?"** → kennt das aktuelle Wetter
@@ -231,6 +252,7 @@ Nicht moeglich: Kommentare oder Direktnachrichten lesen/beantworten (dafuer gibt
 - **"Oeffne skool.com"** → oeffnet die Seite im Browser
 - **"Was siehst du auf meinem Bildschirm?"** → macht Screenshot, beschreibt was er sieht
 - **"Schick mir das aufs Handy"** → Jarvis schreibt dir per Telegram
+- **Jede Wissensfrage** ("Wie entstehen Polarlichter?") → das Dashboard zoomt in die Welt und zeigt 3 passende YouTube-Videos
 - **"Was gibt es Neues auf TikTok?"** → Follower, Likes und wie dein neuestes Video laeuft
 - **"Raeum mein Postfach auf"** → Jarvis prueft Spam und alte Newsletter und verschiebt sie nach deinem OK in den Papierkorb
 - **Jede Frage** → antwortet im Jarvis-Stil mit Stimme

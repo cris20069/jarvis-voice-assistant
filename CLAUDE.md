@@ -39,12 +39,14 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 ├── screen_capture.py      # Screenshot + Claude Vision
 ├── telegram_notify.py     # Telegram-Bot: Text- und Sprachnachrichten aufs Handy
 ├── tiktok_tools.py        # TikTok-Statistiken ueber die offizielle API (Follower, Likes, neuestes Video)
+├── youtube_tools.py       # YouTube-Suche (Data API v3) fuer den Fokus-Modus im Dashboard
 ├── mail_tools.py          # Postfach aufraeumen per IMAP (Spam + alte Newsletter -> Papierkorb)
 ├── finance.json           # Finanzdaten (gitignored, wird automatisch angelegt)
 ├── gym/                   # Jarvis Gym: eigenstaendige Handy-PWA (kein Server, keine KI, kostenlos)
 ├── frontend/
 │   ├── index.html         # Jarvis Web-UI
-│   ├── dashboard.html     # Dashboard fuer den mittleren Monitor (/dashboard)
+│   ├── dashboard.html     # Command Center (/dashboard): Globus, Kennzahlen, Fokus-Modus mit YouTube-Videos
+│   ├── vendor/            # d3-geo, topojson, Weltkarte, Schriften (lokal, kein CDN noetig)
 │   ├── finanzen.html      # Finanz-Cockpit (/finanzen), speichert in finance.json
 │   ├── projects.html      # Projekt-Zentrale (/projects), speichert in projects.json
 │   ├── main.js            # Speech Recognition + WebSocket + Audio

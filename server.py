@@ -6,6 +6,7 @@ speaks with ElevenLabs, controls browser with Playwright.
 
 import asyncio
 import base64
+import calendar
 import collections
 import json
 import os
@@ -23,7 +24,7 @@ except ImportError:
     psutil = None
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 # Load config
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
@@ -50,7 +51,8 @@ import browser_tools
 import screen_capture
 from mail_tools import DEFAULT_HOST, MailCleaner, describe_clean, describe_scan
 from telegram_notify import TelegramNotifier
-from tiktok_tools import TikTokClient, describe as describe_tiktok
+from tiktok_tools import STATE_PATH as TIKTOK_STATE_PATH, TikTokClient, describe as describe_tiktok
+from youtube_tools import YouTubeSearch
 
 telegram = TelegramNotifier(config.get("telegram_bot_token", ""), config.get("telegram_chat_id", ""))
 mail = MailCleaner(config.get("mail_address", ""), config.get("mail_app_password", ""),
@@ -58,6 +60,12 @@ mail = MailCleaner(config.get("mail_address", ""), config.get("mail_app_password
 tiktok = TikTokClient(config.get("tiktok_client_key", ""), config.get("tiktok_client_secret", ""),
                       config.get("tiktok_redirect_uri", ""), http)
 TIKTOK_USERNAME = config.get("tiktok_username", "")
+youtube = YouTubeSearch(config.get("youtube_api_key", ""), http)
+
+# Fokus fuer das Dashboard: jede inhaltliche Frage wird dort mit Globus-Zoom und YouTube-Beispielen gezeigt
+FOCUS: dict = {}
+FOCUS_VERSION = 0
+focus_cond = asyncio.Condition()
 MAIL_CONFIRM_WINDOW = 600
 last_mail_scan = 0.0
 
@@ -146,6 +154,7 @@ def project_days_left(p: dict):
 
 # Action parsing
 ACTION_PATTERN = re.compile(r'\[ACTION:(\w+)\]\s*(.*?)$', re.DOTALL | re.MULTILINE)
+TOPIC_PATTERN = re.compile(r'\[THEMA:\s*([^\]|]*?)\s*(?:\|\s*([^\]]*?))?\s*\]', re.IGNORECASE)
 
 conversations: dict[str, list] = {}
 
@@ -203,6 +212,8 @@ AKTIONEN - Schreibe die passende Aktion ans ENDE deiner Antwort. Der Text VOR de
 [ACTION:TIKTOK] - Holt Julians TikTok-Zahlen: Follower, Likes, was sich seit der letzten Abfrage getan hat und wie das neueste Video laeuft. Nutze das bei Fragen wie "was gibt es Neues auf TikTok", "wie laeuft mein Video", "wie viele Follower habe ich". Schreibe einen kurzen Satz davor wie "Ich sehe auf TikTok nach."{tiktok_open}
 [ACTION:NEWS] - Aktuelle Weltnachrichten abrufen. Nutze diese Aktion wenn nach News, Nachrichten, was in der Welt passiert, aktuelle Lage oder Weltgeschehen gefragt wird. Schreibe einen kurzen Satz davor wie "Ich schaue nach den aktuellen Nachrichten."
 
+THEMA-MARKIERUNG: Stellt Julian eine inhaltliche Frage (Wissen, Erklaerung, Ereignis, Ort, Technik, Geschichte, Empfehlung, Recherche), haenge GANZ am Ende deiner Antwort in einer eigenen Zeile an: [THEMA: kurze YouTube-Suchanfrage auf Deutsch | Land auf Englisch]. Das Land nur angeben, wenn das Thema eindeutig zu einem Land gehoert (z.B. "Japan", "United States of America"), sonst leer lassen: [THEMA: Suchanfrage | ]. Die Markierung wird nicht vorgelesen, sie steuert das Dashboard. NICHT bei Begruessung, Smalltalk, Telegram, Projekten, Postfach oder reinen Befehlen.
+
 WENN Julian "Jarvis activate" sagt:
 - Begruesse ihn passend zur Tageszeit (aktuelle Zeit: {{time}}).
 - Gebe eine kurze Info ueber das Wetter — Temperatur und ob Sonne/klar/bewoelkt/Regen, und wie es sich anfuehlt. Keine Luftfeuchtigkeit.
@@ -217,6 +228,45 @@ Julian pflegt seine Projekte in der Projekt-Zentrale unter http://localhost:8340
 
 def get_system_prompt():
     return build_system_prompt().replace("{time}", time.strftime("%H:%M"))
+
+
+def extract_topic(text: str):
+    match = TOPIC_PATTERN.search(text)
+    clean = TOPIC_PATTERN.sub("", text).strip()
+    if not match or not match.group(1).strip():
+        return clean, None
+    return clean, {"query": match.group(1).strip()[:120], "place": (match.group(2) or "").strip()[:60]}
+
+
+async def publish_focus(data: dict, new: bool = False):
+    global FOCUS, FOCUS_VERSION
+    async with focus_cond:
+        if new:
+            FOCUS = {**data, "id": FOCUS.get("id", 0) + 1, "at": time.time()}
+        else:
+            FOCUS = {**FOCUS, **data}
+        FOCUS_VERSION += 1
+        focus_cond.notify_all()
+    return FOCUS["id"]
+
+
+async def start_focus(question: str, topic: dict, answer: str) -> int:
+    status = "loading" if youtube.enabled else "no_key"
+    fid = await publish_focus({"question": question, "topic": topic["query"], "place": topic["place"],
+                               "answer": answer, "videos": [], "video_status": status}, new=True)
+    if youtube.enabled:
+        asyncio.create_task(fill_focus_videos(fid, topic["query"]))
+    return fid
+
+
+async def fill_focus_videos(fid: int, query: str):
+    try:
+        videos, status = await youtube.search(query), "ok"
+    except Exception as e:
+        print(f"  YouTube error: {e}", flush=True)
+        videos, status = [], "error"
+    if FOCUS.get("id") == fid:
+        await publish_focus({"videos": videos, "video_status": status})
 
 
 def extract_action(text: str):
@@ -354,7 +404,9 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
     )
     reply = response.content[0].text
     print(f"  LLM raw: {reply[:200]}", flush=True)
+    reply, topic = extract_topic(reply)
     spoken_text, action = extract_action(reply)
+    focus_id = await start_focus(user_text, topic, spoken_text) if topic else None
 
     # Speak the main response immediately
     if spoken_text:
@@ -415,7 +467,10 @@ async def process_message(session_id: str, user_text: str, ws: WebSocket):
                 messages=[{"role": "user", "content": f"Fasse zusammen:\n\n{action_result}"}],
             )
             summary = summary_resp.content[0].text
+            summary, _ = extract_topic(summary)
             summary, _ = extract_action(summary)
+            if focus_id and FOCUS.get("id") == focus_id:
+                await publish_focus({"answer": summary})
         else:
             summary = f"Das hat leider nicht funktioniert, {USER_ADDRESS}."
 
@@ -465,6 +520,48 @@ def system_stats():
         return None
 
 
+def finance_summary():
+    d = load_finance()
+    today = date.today()
+    month = today.strftime("%Y-%m")
+    tx = [t for t in d["tx"] if not t.get("example") and str(t.get("date", "")).startswith(month)]
+    income = sum(int(t.get("cents") or 0) for t in tx if t.get("type") == "einnahme")
+    expense = sum(int(t.get("cents") or 0) for t in tx if t.get("type") == "ausgabe")
+    days = calendar.monthrange(today.year, today.month)[1]
+    daily_exp, daily_net, running = [0] * days, [], 0
+    for t in tx:
+        try:
+            i = int(str(t["date"])[8:10]) - 1
+        except (KeyError, ValueError):
+            continue
+        if 0 <= i < days and t.get("type") == "ausgabe":
+            daily_exp[i] += int(t.get("cents") or 0)
+    for i in range(today.day):
+        day = f"{month}-{i + 1:02d}"
+        running += sum(int(t.get("cents") or 0) * (1 if t.get("type") == "einnahme" else -1) for t in tx if t.get("date") == day)
+        daily_net.append(running)
+    subs = [s for s in d["sub"] if not s.get("example")]
+    invs = [i for i in d["inv"] if not i.get("example") and i.get("status") != "bezahlt"]
+    goal = d.get("goal") or {}
+    return {
+        "month": month, "has_data": bool(tx or subs or invs or goal.get("name")),
+        "income": income, "expense": expense, "net": income - expense,
+        "fixed": sum(round(int(s.get("cents") or 0) / 12) if s.get("interval") == "jährlich" else int(s.get("cents") or 0) for s in subs),
+        "open_invoices": sum(int(i.get("cents") or 0) for i in invs), "open_invoices_n": len(invs),
+        "goal": {"name": goal.get("name"), "target": int(goal.get("targetCents") or 0), "saved": int(goal.get("savedCents") or 0)} if goal.get("name") else None,
+        "daily_exp": daily_exp, "daily_net": daily_net, "today": today.day,
+    }
+
+
+def tiktok_summary():
+    try:
+        with open(TIKTOK_STATE_PATH, "r", encoding="utf-8") as f:
+            st = json.load(f)
+        return {"username": TIKTOK_USERNAME, "followers": st.get("followers"), "likes": st.get("likes"), "checked_at": st.get("checked_at")}
+    except (OSError, ValueError):
+        return None
+
+
 @app.get("/api/dashboard")
 async def dashboard_data():
     projects = dashboard_projects()
@@ -491,7 +588,12 @@ async def dashboard_data():
             "overall": overall,
             "list": open_projects[:8],
             "deadlines": deadlines[:6],
+            "calendar": [{"name": p["name"], "days_left": p["days_left"], "priority": p["priority"]}
+                         for p in open_projects if p["days_left"] is not None and p["days_left"] < 28],
         },
+        "finance": finance_summary(),
+        "tiktok": tiktok_summary(),
+        "youtube": youtube.enabled,
         "system": system_stats(),
         "telegram": telegram.enabled,
         "activity": list(ACTIVITY)[-8:],
@@ -671,6 +773,35 @@ async def serve_index():
 # Signal "Begruessung zu Ende": Der Browser meldet, wenn Jarvis fertig gesprochen hat.
 # launch-session.ps1 wartet darauf und schiebt erst dann die Fenster auf den linken Monitor.
 GREETINGS_DONE = 0
+
+
+@app.get("/api/focus")
+async def focus_current():
+    return FOCUS
+
+
+@app.get("/api/focus/stream")
+async def focus_stream(request: Request):
+    async def events():
+        seen = -1
+        while not await request.is_disconnected():
+            if FOCUS_VERSION != seen:
+                seen = FOCUS_VERSION
+                yield f"data: {json.dumps(FOCUS, ensure_ascii=False)}\n\n"
+            try:
+                async with focus_cond:
+                    await asyncio.wait_for(focus_cond.wait_for(lambda: FOCUS_VERSION != seen), timeout=15)
+            except asyncio.TimeoutError:
+                yield ": ping\n\n"
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/focus/demo")
+async def focus_demo(topic: str = "Polarlichter Island", place: str = "Iceland", question: str = "Wie entstehen Polarlichter?"):
+    answer = "Testlauf: So sieht der Fokus-Modus aus, wenn Sie Jarvis eine Frage stellen."
+    fid = await start_focus(question, {"query": topic[:120], "place": place[:60]}, answer)
+    return {"ok": True, "id": fid}
 
 
 @app.get("/api/greeting")

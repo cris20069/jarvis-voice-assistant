@@ -26,5 +26,6 @@
   "tiktok_client_key": "",
   "tiktok_client_secret": "",
   "tiktok_redirect_uri": "https://YOUR_GITHUB_NAME.github.io/YOUR_PAGES_REPO/",
-  "tiktok_username": ""
+  "tiktok_username": "",
+  "youtube_api_key": ""
 }
