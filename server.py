@@ -48,9 +48,14 @@ app = FastAPI()
 
 import browser_tools
 import screen_capture
+from mail_tools import DEFAULT_HOST, MailCleaner, describe_clean, describe_scan
 from telegram_notify import TelegramNotifier
 
 telegram = TelegramNotifier(config.get("telegram_bot_token", ""), config.get("telegram_chat_id", ""))
+mail = MailCleaner(config.get("mail_address", ""), config.get("mail_app_password", ""),
+                   config.get("mail_imap_host", DEFAULT_HOST), config.get("mail_newsletter_days", 30))
+MAIL_CONFIRM_WINDOW = 600
+last_mail_scan = 0.0
 
 
 def get_weather_sync():
@@ -184,6 +189,8 @@ AKTIONEN - Schreibe die passende Aktion ans ENDE deiner Antwort. Der Text VOR de
 [ACTION:OPEN] url - URL im Browser oeffnen
 [ACTION:SCREEN] - Bildschirm ansehen und beschreiben. WICHTIG: Bei SCREEN schreibe NUR die Aktion, KEINEN Text davor. Also NUR "[ACTION:SCREEN]" und sonst nichts.
 [ACTION:TELEGRAM] nachricht - Schickt Julian eine Nachricht aufs Handy (Telegram). Nutze das, wenn er sagt "schick mir das", "erinnere mich per Nachricht" oder aehnliches. Die Nachricht steht nach dem Tag, vollstaendig und verstaendlich ohne Kontext.
+[ACTION:MAILSCAN] - Prueft das E-Mail-Postfach: wie viel Spam und wie viele alte Newsletter aufgeraeumt werden koennten. Nutze das, wenn Julian sein Postfach aufraeumen, Spam loeschen oder ausmisten will. Schreibe einen kurzen Satz davor wie "Ich sehe mir Ihr Postfach an."
+[ACTION:MAILCLEAN] - Verschiebt Spam und alte Newsletter in den Papierkorb. Nutze das NUR, wenn du gerade per MAILSCAN berichtet hast und Julian danach ausdruecklich zugestimmt hat (z.B. "ja", "mach", "raeum auf"). Niemals ohne diese Zustimmung.
 [ACTION:NEWS] - Aktuelle Weltnachrichten abrufen. Nutze diese Aktion wenn nach News, Nachrichten, was in der Welt passiert, aktuelle Lage oder Weltgeschehen gefragt wird. Schreibe einen kurzen Satz davor wie "Ich schaue nach den aktuellen Nachrichten."
 
 WENN Julian "Jarvis activate" sagt:
@@ -280,6 +287,22 @@ async def execute_action(action: dict) -> str:
     elif t == "NEWS":
         result = await browser_tools.fetch_news()
         return result
+
+    elif t in ("MAILSCAN", "MAILCLEAN"):
+        global last_mail_scan
+        if not mail.enabled:
+            return "Das E-Mail-Postfach ist nicht eingerichtet (python scripts/mail-setup.py)."
+        try:
+            if t == "MAILCLEAN" and time.time() - last_mail_scan < MAIL_CONFIRM_WINDOW:
+                last_mail_scan = 0.0
+                return "Erledigt: " + describe_clean(await mail.clean())
+            scan = await mail.scan()
+            last_mail_scan = time.time()
+            note = "" if t == "MAILSCAN" else "Zur Sicherheit wurde noch nichts verschoben. "
+            return f"{describe_scan(scan)}\n{note}Frage Sir am Ende, ob aufgeraeumt werden soll."
+        except Exception as e:
+            print(f"  Mail error: {e}", flush=True)
+            return f"Postfach-Zugriff fehlgeschlagen: {e}"
 
     elif t == "TELEGRAM":
         if not telegram.enabled:

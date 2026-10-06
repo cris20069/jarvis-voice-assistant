@@ -179,6 +179,26 @@ Geplante Nachrichten kommen nur, wenn der Server laeuft — bis zu 60 Minuten na
 
 ---
 
+## Postfach aufraeumen (Spam und alte Newsletter)
+
+Jarvis kann deinen Spam-Ordner leeren und alte Newsletter aus dem Posteingang raeumen. Alles landet im **Papierkorb** (nichts wird endgueltig geloescht), Mails mit **Faehnchen** bleiben immer liegen, und Jarvis fragt vorher nach.
+
+1. Yahoo: Kontoinfo → **Kontosicherheit** → **App-Passwort erstellen** (Name z.B. "Jarvis"). Dein normales Passwort funktioniert hier nicht.
+2. `python scripts\mail-setup.py` ausfuehren, Adresse und App-Passwort eingeben. Das Skript testet die Verbindung und zeigt, was aufgeraeumt werden koennte.
+3. `server.py` neu starten.
+
+Dann: **"Jarvis, raeum mein Postfach auf"** → Jarvis sagt, wie viel Spam und Newsletter er gefunden hat → **"Ja, mach"** → alles im Papierkorb.
+Ohne Sprache: `python scripts\mail-cleanup.py` (zeigt erst alles an, verschiebt erst nach `j`).
+
+| Einstellung in `config.json` | Bedeutung |
+|---|---|
+| `mail_newsletter_days` | Newsletter (Mails mit Abmelde-Link) aelter als so viele Tage werden mit aufgeraeumt, `0` = nur Spam |
+| `mail_imap_host` | `imap.mail.yahoo.com` (Gmail: `imap.gmail.com`, GMX: `imap.gmx.net`, web.de: `imap.web.de`) |
+
+Das App-Passwort steht nur in `config.json` auf deinem PC (nicht auf GitHub) und laesst sich bei Yahoo jederzeit widerrufen.
+
+---
+
 ## Was Jarvis kann
 
 - **"Wie ist das Wetter?"** → kennt das aktuelle Wetter
@@ -186,6 +206,7 @@ Geplante Nachrichten kommen nur, wenn der Server laeuft — bis zu 60 Minuten na
 - **"Oeffne skool.com"** → oeffnet die Seite im Browser
 - **"Was siehst du auf meinem Bildschirm?"** → macht Screenshot, beschreibt was er sieht
 - **"Schick mir das aufs Handy"** → Jarvis schreibt dir per Telegram
+- **"Raeum mein Postfach auf"** → Jarvis prueft Spam und alte Newsletter und verschiebt sie nach deinem OK in den Papierkorb
 - **Jede Frage** → antwortet im Jarvis-Stil mit Stimme
 
 ---

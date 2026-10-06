@@ -18,5 +18,9 @@
   "telegram_deadline_time": "18:00",
   "telegram_voice": true,
   "monitor_apps": 0,
-  "monitor_dashboard": 1
+  "monitor_dashboard": 1,
+  "mail_address": "",
+  "mail_app_password": "",
+  "mail_imap_host": "imap.mail.yahoo.com",
+  "mail_newsletter_days": 30
 }

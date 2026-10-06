@@ -38,6 +38,7 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 ├── browser_tools.py       # Playwright Browser-Steuerung
 ├── screen_capture.py      # Screenshot + Claude Vision
 ├── telegram_notify.py     # Telegram-Bot: Text- und Sprachnachrichten aufs Handy
+├── mail_tools.py          # Postfach aufraeumen per IMAP (Spam + alte Newsletter -> Papierkorb)
 ├── finance.json           # Finanzdaten (gitignored, wird automatisch angelegt)
 ├── gym/                   # Jarvis Gym: eigenstaendige Handy-PWA (kein Server, keine KI, kostenlos)
 ├── frontend/
@@ -50,5 +51,7 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 └── scripts/
     ├── clap-trigger.py    # Doppelklatschen-Erkennung
     ├── telegram-setup.py  # Telegram-Bot verbinden (Token + Chat-ID in config.json)
+    ├── mail-setup.py      # E-Mail-Postfach verbinden (App-Passwort in config.json)
+    ├── mail-cleanup.py    # Postfach von Hand aufraeumen (mit Vorschau + Nachfrage)
     └── launch-session.ps1 # Startet alle Apps + Jarvis (Apps links, Dashboard Mitte)
 ```
