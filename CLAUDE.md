@@ -30,6 +30,7 @@ Erst NACHDEM alle Voraussetzungen installiert sind, fahre mit dem Setup in `SETU
 .
 ├── CLAUDE.md              # This file
 ├── SETUP.md               # Setup-Anleitung fuer Claude Code
+├── NAECHSTE-SCHRITTE.md   # Checkliste: unterwegs gebaute Funktionen am PC einrichten und testen
 ├── config.json            # Persoenliche Config (gitignored)
 ├── config.example.json    # Template mit Platzhaltern
 ├── projects.json          # Projekt-Register (gitignored, wird automatisch angelegt)
