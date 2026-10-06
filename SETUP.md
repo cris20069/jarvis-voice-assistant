@@ -199,6 +199,31 @@ Das App-Passwort steht nur in `config.json` auf deinem PC (nicht auf GitHub) und
 
 ---
 
+## TikTok verbinden (Follower, Likes, neuestes Video)
+
+Jarvis liest ueber die **offizielle TikTok-API** deine Profilzahlen und die neuesten Videos und sagt dir, was sich seit der letzten Abfrage getan hat. Kostenlos, nur lesend.
+
+**Einmalig: TikTok-Entwickler-App anlegen** (die Menuepunkte koennen leicht anders heissen)
+1. **developers.tiktok.com** oeffnen und mit deinem TikTok-Konto anmelden.
+2. Unter **Manage apps** eine neue App anlegen (Name z.B. "Jarvis").
+3. Das Produkt **Login Kit** hinzufuegen und diese Berechtigungen (Scopes) aktivieren: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`.
+4. Bei Login Kit als **Redirect URI** eine https-Seite eintragen, die dir gehoert, z.B. deine GitHub-Pages-Adresse (`https://DEINNAME.github.io/Jarvis-gym/`).
+5. **Sandbox** anlegen und dort dein eigenes TikTok-Konto als **Target User** hinzufuegen. So funktioniert alles fuer dich, ohne dass TikTok die App pruefen muss.
+6. **Client Key** und **Client Secret** kopieren.
+
+**Verbinden**
+1. `python scripts\tiktok-setup.py` ausfuehren, Client Key, Client Secret und Redirect URI eingeben.
+2. Im Browser bei TikTok **Erlauben** tippen. Du landest auf deiner Redirect-Seite: die **komplette Adresse** aus der Adresszeile kopieren und ins Skript einfuegen.
+3. `server.py` neu starten.
+
+Dann: **"Jarvis, was gibt es Neues auf TikTok?"** oder **"Wie laeuft mein neuestes Video?"** → Follower und Likes seit der letzten Abfrage, Aufrufe/Likes/Kommentare des neuesten Videos und ob es besser laeuft als die vorherigen. **"Oeffne mein TikTok"** oeffnet dein Profil.
+
+Die Zugangsdaten liegen in `tiktok_token.json` (nicht auf GitHub) und werden automatisch erneuert. Nach etwa einem Jahr ohne Nutzung musst du das Setup-Skript erneut ausfuehren.
+
+Nicht moeglich: Kommentare oder Direktnachrichten lesen/beantworten (dafuer gibt es fuer normale Konten keine offizielle Schnittstelle). Videos hochladen geht nur nach einer Pruefung der App durch TikTok.
+
+---
+
 ## Was Jarvis kann
 
 - **"Wie ist das Wetter?"** → kennt das aktuelle Wetter
@@ -206,6 +231,7 @@ Das App-Passwort steht nur in `config.json` auf deinem PC (nicht auf GitHub) und
 - **"Oeffne skool.com"** → oeffnet die Seite im Browser
 - **"Was siehst du auf meinem Bildschirm?"** → macht Screenshot, beschreibt was er sieht
 - **"Schick mir das aufs Handy"** → Jarvis schreibt dir per Telegram
+- **"Was gibt es Neues auf TikTok?"** → Follower, Likes und wie dein neuestes Video laeuft
 - **"Raeum mein Postfach auf"** → Jarvis prueft Spam und alte Newsletter und verschiebt sie nach deinem OK in den Papierkorb
 - **Jede Frage** → antwortet im Jarvis-Stil mit Stimme
 

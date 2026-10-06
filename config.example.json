@@ -22,5 +22,9 @@
   "mail_address": "",
   "mail_app_password": "",
   "mail_imap_host": "imap.mail.yahoo.com",
-  "mail_newsletter_days": 30
+  "mail_newsletter_days": 30,
+  "tiktok_client_key": "",
+  "tiktok_client_secret": "",
+  "tiktok_redirect_uri": "https://YOUR_GITHUB_NAME.github.io/YOUR_PAGES_REPO/",
+  "tiktok_username": ""
 }

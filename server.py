@@ -50,10 +50,14 @@ import browser_tools
 import screen_capture
 from mail_tools import DEFAULT_HOST, MailCleaner, describe_clean, describe_scan
 from telegram_notify import TelegramNotifier
+from tiktok_tools import TikTokClient, describe as describe_tiktok
 
 telegram = TelegramNotifier(config.get("telegram_bot_token", ""), config.get("telegram_chat_id", ""))
 mail = MailCleaner(config.get("mail_address", ""), config.get("mail_app_password", ""),
                    config.get("mail_imap_host", DEFAULT_HOST), config.get("mail_newsletter_days", 30))
+tiktok = TikTokClient(config.get("tiktok_client_key", ""), config.get("tiktok_client_secret", ""),
+                      config.get("tiktok_redirect_uri", ""), http)
+TIKTOK_USERNAME = config.get("tiktok_username", "")
 MAIL_CONFIRM_WINDOW = 600
 last_mail_scan = 0.0
 
@@ -178,6 +182,11 @@ def build_system_prompt():
             parts.append(f"{p.get('name', '?')} ({info})")
         project_block = f"\nOffene Projekte ({len(open_projects)}): " + "; ".join(parts)
 
+    if TIKTOK_USERNAME:
+        tiktok_open = f'\n[ACTION:OPEN] https://www.tiktok.com/@{TIKTOK_USERNAME} - Oeffnet Julians TikTok-Profil, wenn er "oeffne mein TikTok" sagt.'
+    else:
+        tiktok_open = '\nWenn Julian TikTok oeffnen will: [ACTION:OPEN] https://www.tiktok.com'
+
     return f"""Du bist Jarvis, der KI-Assistent von Tony Stark aus Iron Man. Dein Dienstherr ist Julian, ein KI-Berater und Automatisierungsexperte. Du sprichst ausschliesslich Deutsch. Julian moechte mit "Sir" angesprochen und gesiezt werden. Nutze "Sie" als Pronomen — FALSCH: "Sir planen", RICHTIG: "Sie planen, Sir". Dein Ton ist trocken, sarkastisch und britisch-hoeflich - wie ein Butler der alles gesehen hat und trotzdem loyal bleibt. Du machst subtile, trockene Bemerkungen, bist aber niemals respektlos. Wenn Sir eine offensichtliche Frage stellt, darfst du mit elegantem Sarkasmus antworten. Du bist hochintelligent, effizient und immer einen Schritt voraus. Halte deine Antworten kurz - maximal 3 Saetze. Du kommentierst fragwuerdige Entscheidungen hoeflich aber spitz.
 
 WICHTIG: Schreibe NIEMALS Regieanweisungen, Emotionen oder Tags in eckigen Klammern wie [sarcastic] [formal] [amused] [dry] oder aehnliches. Dein Sarkasmus muss REIN durch die Wortwahl kommen. Alles was du schreibst wird laut vorgelesen.
@@ -191,6 +200,7 @@ AKTIONEN - Schreibe die passende Aktion ans ENDE deiner Antwort. Der Text VOR de
 [ACTION:TELEGRAM] nachricht - Schickt Julian eine Nachricht aufs Handy (Telegram). Nutze das, wenn er sagt "schick mir das", "erinnere mich per Nachricht" oder aehnliches. Die Nachricht steht nach dem Tag, vollstaendig und verstaendlich ohne Kontext.
 [ACTION:MAILSCAN] - Prueft das E-Mail-Postfach: wie viel Spam und wie viele alte Newsletter aufgeraeumt werden koennten. Nutze das, wenn Julian sein Postfach aufraeumen, Spam loeschen oder ausmisten will. Schreibe einen kurzen Satz davor wie "Ich sehe mir Ihr Postfach an."
 [ACTION:MAILCLEAN] - Verschiebt Spam und alte Newsletter in den Papierkorb. Nutze das NUR, wenn du gerade per MAILSCAN berichtet hast und Julian danach ausdruecklich zugestimmt hat (z.B. "ja", "mach", "raeum auf"). Niemals ohne diese Zustimmung.
+[ACTION:TIKTOK] - Holt Julians TikTok-Zahlen: Follower, Likes, was sich seit der letzten Abfrage getan hat und wie das neueste Video laeuft. Nutze das bei Fragen wie "was gibt es Neues auf TikTok", "wie laeuft mein Video", "wie viele Follower habe ich". Schreibe einen kurzen Satz davor wie "Ich sehe auf TikTok nach."{tiktok_open}
 [ACTION:NEWS] - Aktuelle Weltnachrichten abrufen. Nutze diese Aktion wenn nach News, Nachrichten, was in der Welt passiert, aktuelle Lage oder Weltgeschehen gefragt wird. Schreibe einen kurzen Satz davor wie "Ich schaue nach den aktuellen Nachrichten."
 
 WENN Julian "Jarvis activate" sagt:
@@ -303,6 +313,15 @@ async def execute_action(action: dict) -> str:
         except Exception as e:
             print(f"  Mail error: {e}", flush=True)
             return f"Postfach-Zugriff fehlgeschlagen: {e}"
+
+    elif t == "TIKTOK":
+        if not tiktok.enabled:
+            return "TikTok ist noch nicht verbunden (python scripts/tiktok-setup.py)."
+        try:
+            return describe_tiktok(await tiktok.report())
+        except Exception as e:
+            print(f"  TikTok error: {e}", flush=True)
+            return f"TikTok-Abfrage fehlgeschlagen: {e}"
 
     elif t == "TELEGRAM":
         if not telegram.enabled:
