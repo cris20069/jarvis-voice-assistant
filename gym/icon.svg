@@ -1,13 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#03070d"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#15405a" stroke-width="22"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#52dcff" stroke-width="22" stroke-linecap="round" stroke-dasharray="860 1194" transform="rotate(-90 256 256)"/>
-  <circle cx="256" cy="256" r="120" fill="none" stroke="#2a8fb3" stroke-width="4" stroke-dasharray="12 14"/>
-  <g fill="#52dcff">
-    <rect x="150" y="238" width="212" height="36" rx="6"/>
-    <rect x="118" y="196" width="34" height="120" rx="8"/>
-    <rect x="360" y="196" width="34" height="120" rx="8"/>
-    <rect x="92" y="220" width="22" height="72" rx="6"/>
-    <rect x="398" y="220" width="22" height="72" rx="6"/>
+  <defs>
+    <radialGradient id="bg" cx="20%" cy="10%" r="90%"><stop offset="0" stop-color="#3a1214"/><stop offset=".55" stop-color="#0b0a0d"/></radialGradient>
+    <linearGradient id="db" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5a5d"/><stop offset="1" stop-color="#c42528"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="186" fill="none" stroke="#2a2430" stroke-width="20"/>
+  <circle cx="256" cy="256" r="186" fill="none" stroke="#5fdcff" stroke-width="20" stroke-linecap="round" stroke-dasharray="780 1169" transform="rotate(-90 256 256)"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#f2b33d" stroke-width="3" stroke-dasharray="4 14"/>
+  <g fill="url(#db)">
+    <rect x="156" y="240" width="200" height="32" rx="8"/>
+    <rect x="124" y="190" width="38" height="132" rx="10"/>
+    <rect x="350" y="190" width="38" height="132" rx="10"/>
+    <rect x="96" y="216" width="24" height="80" rx="8"/>
+    <rect x="392" y="216" width="24" height="80" rx="8"/>
   </g>
 </svg>
