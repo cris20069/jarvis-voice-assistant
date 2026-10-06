@@ -586,7 +586,7 @@ async function wake() {
   } catch {}
 }
 function releaseWake() { try { wl && wl.release(); } catch {} wl = null; }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); if (typeof resumeHero === 'function') resumeHero(); } });
 
 /* ---------- workout logic ---------- */
 let summary = null, tab = 'heute', focusEx = 0, chartEx = null, chartMetric = 'kg', lastHeard = '';
@@ -834,12 +834,22 @@ function mountHero(slot, v) {
     heroTimer = setInterval(() => {
       const frame = player.getIframe && player.getIframe();
       if (!frame || !frame.isConnected) { if (heroPlayer === player) stopHero(); return; }
+      const st = player.getPlayerState ? player.getPlayerState() : null;
+      if (document.visibilityState === 'visible' && (st === YT.PlayerState.PAUSED || st === YT.PlayerState.CUED)) { player.mute(); player.playVideo(); }
       if (!v.trim || !player.getDuration) return;
       const d = player.getDuration(), t = player.getCurrentTime();
       if (d > 0 && t >= d - v.trim) restart(player);
     }, 250);
   }).catch(() => { if (slot.isConnected) slot.replaceWith(plainEmbed(v)); });
 }
+
+function resumeHero() {
+  if (heroPlayer && heroPlayer.playVideo) { try { heroPlayer.mute(); heroPlayer.playVideo(); } catch {} return; }
+  const f = document.querySelector('.cam-feed iframe');
+  if (f) f.src = f.src;
+}
+window.addEventListener('pageshow', () => resumeHero());
+window.addEventListener('focus', () => resumeHero());
 
 function heroVisual(wk, goal) {
   const v = S.settings.heroVideo;
