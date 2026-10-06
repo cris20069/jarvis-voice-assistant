@@ -101,6 +101,7 @@ button{font:inherit;color:inherit}
 /* chase-cam hero video */
 .cam{position:relative;z-index:1;width:100%;aspect-ratio:1/1;max-height:440px;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--line-2)}
 .cam-feed{position:absolute;inset:-7%}
+.cam-slot{position:absolute;inset:0}
 .cam-feed iframe{position:absolute;top:0;left:50%;height:100%;width:177.78%;transform:translateX(-50%);border:0;pointer-events:none}
 .cam-hud{position:absolute;inset:0;pointer-events:none;font:700 10px/1 var(--f-mono);letter-spacing:.16em;color:#fff;text-shadow:0 1px 3px #000;text-transform:uppercase}
 .cam-hud::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 52%,rgba(0,0,0,.6))}
@@ -258,7 +259,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);bo
 .setting:last-child{padding-bottom:2px}
 .setting b{display:block;font-weight:600}
 .setting span{font-size:13px;color:var(--mute)}
-.setting input[type=number]{width:92px;flex:none;text-align:center;font:700 20px/1 var(--f-display)}
+.setting input[type=number]{width:92px;min-width:92px;flex:none;text-align:center;font:700 20px/1 var(--f-display)}
 .switch{appearance:none;-webkit-appearance:none;flex:none;width:54px;height:32px;border-radius:999px;margin:0;cursor:pointer;position:relative;background:rgba(255,255,255,.1);border:1px solid var(--line-2);transition:background .2s}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#f4efe9;transition:transform .2s;box-shadow:0 2px 6px rgba(0,0,0,.5)}
 .switch:checked{background:var(--green);border-color:transparent}
@@ -418,7 +419,7 @@ function sanitize(o) {
   st.settings = {
     rest: clamp(num(s.rest, 90), 10, 600), goal: clamp(Math.round(num(s.goal, 3)), 1, 14), sets: clamp(Math.round(num(s.sets, 3)), 1, 10),
     repTarget: clamp(Math.round(num(s.repTarget, 8)), 1, 30), step: clamp(num(s.step, 2.5), 0.25, 25), speak: !!s.speak,
-    heroVideo: s.heroVideo && /^[A-Za-z0-9_-]{11}$/.test(s.heroVideo.id) ? { id: s.heroVideo.id, start: clamp(Math.round(num(s.heroVideo.start, 0)), 0, 86400) } : null
+    heroVideo: s.heroVideo && /^[A-Za-z0-9_-]{11}$/.test(s.heroVideo.id) ? { id: s.heroVideo.id, start: clamp(Math.round(num(s.heroVideo.start, 0)), 0, 86400), trim: clamp(Math.round(num(s.heroVideo.trim, 0)), 0, 600) } : null
   };
   return st;
 }
@@ -795,13 +796,59 @@ setInterval(() => { const el = document.getElementById('camtc'); if (el) el.text
 window.addEventListener('online', () => { if (tab === 'heute' && !S.active) render(); });
 window.addEventListener('offline', () => { if (tab === 'heute' && !S.active) render(); });
 
+let ytApi = null, heroPlayer = null, heroTimer = null;
+function loadYouTubeApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (!ytApi) ytApi = new Promise((resolve, reject) => {
+    window.onYouTubeIframeAPIReady = resolve;
+    const sc = document.createElement('script');
+    sc.src = 'https://www.youtube.com/iframe_api';
+    sc.onerror = () => { ytApi = null; reject(new Error('YouTube nicht erreichbar')); };
+    document.head.append(sc);
+    setTimeout(() => reject(new Error('timeout')), 12000);
+  });
+  return ytApi;
+}
+function stopHero() {
+  clearInterval(heroTimer); heroTimer = null;
+  if (heroPlayer) { try { heroPlayer.destroy(); } catch {} heroPlayer = null; }
+}
+function plainEmbed(v) {
+  const src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&mute=1&loop=1&playlist=${v.id}&controls=0&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&fs=0${v.start ? `&start=${v.start}` : ''}`;
+  return h('iframe', { src, title: 'Video im Startbereich', allow: 'autoplay; encrypted-media; picture-in-picture', referrerpolicy: 'strict-origin-when-cross-origin', tabindex: '-1' });
+}
+function mountHero(slot, v) {
+  stopHero();
+  loadYouTubeApi().then(() => {
+    if (!slot.isConnected) return;
+    const restart = p => { p.seekTo(v.start || 0, true); p.playVideo(); };
+    const player = new YT.Player(slot, {
+      videoId: v.id, host: 'https://www.youtube-nocookie.com',
+      playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, fs: 0, start: v.start || 0, origin: location.origin },
+      events: {
+        onReady: e => { e.target.mute(); e.target.playVideo(); },
+        onStateChange: e => { if (e.data === YT.PlayerState.ENDED) restart(e.target); },
+      },
+    });
+    heroPlayer = player;
+    heroTimer = setInterval(() => {
+      const frame = player.getIframe && player.getIframe();
+      if (!frame || !frame.isConnected) { if (heroPlayer === player) stopHero(); return; }
+      if (!v.trim || !player.getDuration) return;
+      const d = player.getDuration(), t = player.getCurrentTime();
+      if (d > 0 && t >= d - v.trim) restart(player);
+    }, 250);
+  }).catch(() => { if (slot.isConnected) slot.replaceWith(plainEmbed(v)); });
+}
+
 function heroVisual(wk, goal) {
   const v = S.settings.heroVideo;
-  if (!v || !navigator.onLine) return h('div', { class: 'reactor' }, reactor(wk, goal));
-  const src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&mute=1&loop=1&playlist=${v.id}&controls=0&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&fs=0${v.start ? `&start=${v.start}` : ''}`;
+  if (!v || !navigator.onLine) { stopHero(); return h('div', { class: 'reactor' }, reactor(wk, goal)); }
+  const slot = h('div', { class: 'cam-slot' });
+  setTimeout(() => mountHero(slot, v), 0);
   const p = Math.min(1, wk / goal), R = 27, C = 2 * Math.PI * R;
   return h('div', { class: 'cam' },
-    h('div', { class: 'cam-feed' }, h('iframe', { src, title: 'Video im Startbereich', allow: 'autoplay; encrypted-media; picture-in-picture', referrerpolicy: 'strict-origin-when-cross-origin', tabindex: '-1' })),
+    h('div', { class: 'cam-feed' }, slot),
     h('div', { class: 'cam-hud', 'aria-hidden': 'true' },
       ['tl', 'tr', 'bl', 'br'].map(c => h('span', { class: 'cc ' + c })),
       h('div', { class: 'rec' }, h('i', {}), 'Rec'),
@@ -824,13 +871,16 @@ function heroCard() {
   const v = S.settings.heroVideo;
   const inp = h('input', { type: 'text', id: 'hero-link', inputmode: 'url', autocomplete: 'off', placeholder: 'https://youtu.be/…', 'aria-label': 'YouTube-Link für den Startbereich',
     value: v ? `https://youtu.be/${v.id}${v.start ? `?t=${v.start}` : ''}` : '' });
+  const trim = h('input', { type: 'number', id: 'hero-trim', inputmode: 'numeric', min: '0', max: '600', step: '1', value: v ? v.trim || 0 : 0, 'aria-label': 'Am Ende abschneiden in Sekunden' });
   return h('section', { class: 'panel' },
     h('p', { class: 'note' }, 'Füg einen YouTube-Link ein, zum Beispiel einen Spider-Man-Clip. Er läuft stumm in Dauerschleife im Kamera-Look oben auf der Startseite. Eine Startzeit im Link (?t=95) wird übernommen. Ohne Internet erscheint wieder der Ring.'),
     h('div', { class: 'stack', style: 'gap:8px' }, inp,
+      h('div', { class: 'setting', style: 'padding:4px 0' }, h('label', { for: 'hero-trim' }, h('b', {}, 'Am Ende abschneiden'), h('span', {}, 'Sekunden, die vor dem Neustart übersprungen werden')), trim),
       h('div', { class: 'row' },
         h('button', { class: 'btn sm primary', onclick: () => {
           const r = parseYouTube(inp.value);
           if (!r) return toast('Das ist kein gültiger YouTube-Link');
+          r.trim = clamp(Math.round(parseNum(trim.value) || 0), 0, 600);
           S.settings.heroVideo = r; save(); toast('Video übernommen, schau auf die Startseite'); render();
         } }, icon(I.check, 16), 'Übernehmen'),
         v && h('button', { class: 'btn sm', onclick: () => { S.settings.heroVideo = null; save(); toast('Video entfernt'); render(); } }, 'Entfernen'))));
@@ -1121,6 +1171,7 @@ function viewFortschritt() {
 /* ---------- app shell ---------- */
 const $main = document.getElementById('main');
 function render() {
+  if (tab !== 'heute' || S.active) stopHero();
   const views = { heute: viewHeute, plaene: viewPlaene, verlauf: viewVerlauf, fortschritt: viewFortschritt };
   $main.replaceChildren(...[].concat(views[tab]()).filter(Boolean));
   document.querySelectorAll('.dock button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
