@@ -1,4 +1,4 @@
-const CACHE = 'jarvis-gym-v3';
+const CACHE = 'jarvis-gym-v4';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'fonts/saira-condensed-latin-700-normal.woff2',
   'fonts/saira-condensed-latin-800-normal.woff2',
