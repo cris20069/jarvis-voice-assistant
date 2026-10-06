@@ -98,6 +98,38 @@ button{font:inherit;color:inherit}
 .r-lbl{font:700 8.5px/1 var(--f-mono);letter-spacing:.26em;fill:var(--mute)}
 @media (prefers-reduced-motion:no-preference){.inner{animation:spin 48s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}}
 
+/* chase-cam hero video */
+.cam{position:relative;z-index:1;width:100%;aspect-ratio:1/1;max-height:440px;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--line-2)}
+.cam-feed{position:absolute;inset:-7%}
+.cam-feed iframe{position:absolute;top:0;left:50%;height:100%;width:177.78%;transform:translateX(-50%);border:0;pointer-events:none}
+.cam-hud{position:absolute;inset:0;pointer-events:none;font:700 10px/1 var(--f-mono);letter-spacing:.16em;color:#fff;text-shadow:0 1px 3px #000;text-transform:uppercase}
+.cam-hud::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 52%,rgba(0,0,0,.6))}
+.cam-hud::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px)}
+.cc{position:absolute;width:22px;height:22px;border:2px solid rgba(255,255,255,.85)}
+.cc.tl{top:12px;left:12px;border-right:0;border-bottom:0}.cc.tr{top:12px;right:12px;border-left:0;border-bottom:0}
+.cc.bl{bottom:12px;left:12px;border-right:0;border-top:0}.cc.br{bottom:12px;right:12px;border-left:0;border-top:0}
+.rec{position:absolute;top:18px;left:42px;display:flex;align-items:center;gap:6px;z-index:1}
+.rec i{width:8px;height:8px;border-radius:50%;background:var(--red-hi);box-shadow:0 0 8px var(--red-hi)}
+.camid{position:absolute;top:32px;left:42px;font-weight:500;color:rgba(255,255,255,.72);z-index:1}
+.tc{position:absolute;top:18px;right:42px;z-index:1;font-variant-numeric:tabular-nums}
+.reticle{position:absolute;left:50%;top:46%;width:96px;height:96px;margin:-48px;z-index:1}
+.reticle svg{width:100%;height:100%;overflow:visible}
+.lock{position:absolute;left:0;right:0;top:calc(46% + 56px);text-align:center;color:var(--gold-hi);font-size:9px;z-index:1}
+.cam-tag{position:absolute;left:42px;bottom:22px;z-index:1;display:grid;gap:5px}
+.cam-tag b{font:800 22px/1 var(--f-display);letter-spacing:.02em}
+.cam-tag span{color:rgba(255,255,255,.72);font-weight:500}
+.cam-ring{position:absolute;right:42px;bottom:22px;width:66px;height:66px;z-index:1}
+.cam-ring svg{width:100%;height:100%}
+.cam-ring b{position:absolute;inset:0;display:grid;place-items:center;font:800 18px/1 var(--f-display);letter-spacing:0}
+@media (prefers-reduced-motion:no-preference){
+  .cam-feed{animation:handheld 7s ease-in-out infinite alternate}
+  .reticle{animation:track 9s ease-in-out infinite alternate}
+  .rec i{animation:recblink 1.2s steps(2,jump-none) infinite}
+}
+@keyframes handheld{0%{transform:translate(0,0) rotate(0) scale(1.02)}25%{transform:translate(-1.4%,.9%) rotate(-.45deg) scale(1.05)}50%{transform:translate(1.1%,-.7%) rotate(.35deg) scale(1.08)}75%{transform:translate(-.7%,-1.1%) rotate(-.25deg) scale(1.06)}100%{transform:translate(.9%,.8%) rotate(.4deg) scale(1.11)}}
+@keyframes track{0%{transform:translate(-16px,8px)}30%{transform:translate(12px,-10px)}60%{transform:translate(-6px,14px)}100%{transform:translate(14px,4px)}}
+@keyframes recblink{50%{opacity:.15}}
+
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;position:relative;z-index:1}
 .day{display:grid;justify-items:center;gap:7px;font:700 10px/1 var(--f-mono);letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
 .day b{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 14px/1 var(--f-display);color:var(--mute);border:1px solid var(--line-2);background:rgba(255,255,255,.02)}
@@ -340,7 +372,7 @@ const DEFAULT = {
   ],
   workouts: [],
   active: null,
-  settings: { rest: 90, goal: 3, sets: 3, repTarget: 8, step: 2.5, speak: false }
+  settings: { rest: 90, goal: 3, sets: 3, repTarget: 8, step: 2.5, speak: false, heroVideo: null }
 };
 
 function cleanSets(a) {
@@ -385,7 +417,8 @@ function sanitize(o) {
   const s = o.settings || {};
   st.settings = {
     rest: clamp(num(s.rest, 90), 10, 600), goal: clamp(Math.round(num(s.goal, 3)), 1, 14), sets: clamp(Math.round(num(s.sets, 3)), 1, 10),
-    repTarget: clamp(Math.round(num(s.repTarget, 8)), 1, 30), step: clamp(num(s.step, 2.5), 0.25, 25), speak: !!s.speak
+    repTarget: clamp(Math.round(num(s.repTarget, 8)), 1, 30), step: clamp(num(s.step, 2.5), 0.25, 25), speak: !!s.speak,
+    heroVideo: s.heroVideo && /^[A-Za-z0-9_-]{11}$/.test(s.heroVideo.id) ? { id: s.heroVideo.id, start: clamp(Math.round(num(s.heroVideo.start, 0)), 0, 86400) } : null
   };
   return st;
 }
@@ -739,6 +772,70 @@ function barChart(bars) {
 const TONES = ['var(--red)', 'var(--gold)', 'var(--cyan)', 'var(--green)'];
 const sec = (title, meta) => h('div', { class: 'sec' }, h('h2', {}, title), meta != null && h('span', {}, meta));
 const fact = (label, value, cls) => h('span', { class: 'fact' + (cls ? ' ' + cls : '') }, label, h('b', {}, String(value)));
+function parseYouTube(text) {
+  const t = String(text || '').trim();
+  let id = null, start = 0;
+  try {
+    const u = new URL(t), host = u.hostname.replace(/^(www|m|music)\./, '');
+    if (host === 'youtu.be') id = u.pathname.slice(1, 12);
+    else if (host === 'youtube.com' || host === 'youtube-nocookie.com') id = u.searchParams.get('v') || (u.pathname.match(/\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{11})/) || [])[1];
+    const tt = u.searchParams.get('t') || u.searchParams.get('start');
+    const m = tt && tt.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+    if (m) start = (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
+  } catch { if (/^[A-Za-z0-9_-]{11}$/.test(t)) id = t; }
+  return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? { id, start } : null;
+}
+
+const camStart = Date.now();
+function camTimecode() {
+  const ms = Date.now() - camStart, s = Math.floor(ms / 1000), f = Math.floor(ms % 1000 / 40);
+  return `TC ${[Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60, f].map(n => String(n).padStart(2, '0')).join(':')}`;
+}
+setInterval(() => { const el = document.getElementById('camtc'); if (el) el.textContent = camTimecode(); }, 200);
+window.addEventListener('online', () => { if (tab === 'heute' && !S.active) render(); });
+window.addEventListener('offline', () => { if (tab === 'heute' && !S.active) render(); });
+
+function heroVisual(wk, goal) {
+  const v = S.settings.heroVideo;
+  if (!v || !navigator.onLine) return h('div', { class: 'reactor' }, reactor(wk, goal));
+  const src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&mute=1&loop=1&playlist=${v.id}&controls=0&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&fs=0${v.start ? `&start=${v.start}` : ''}`;
+  const p = Math.min(1, wk / goal), R = 27, C = 2 * Math.PI * R;
+  return h('div', { class: 'cam' },
+    h('div', { class: 'cam-feed' }, h('iframe', { src, title: 'Video im Startbereich', allow: 'autoplay; encrypted-media; picture-in-picture', referrerpolicy: 'strict-origin-when-cross-origin', tabindex: '-1' })),
+    h('div', { class: 'cam-hud', 'aria-hidden': 'true' },
+      ['tl', 'tr', 'bl', 'br'].map(c => h('span', { class: 'cc ' + c })),
+      h('div', { class: 'rec' }, h('i', {}), 'Rec'),
+      h('div', { class: 'camid' }, 'Cam 02 · Tracking'),
+      h('div', { class: 'tc', id: 'camtc' }, camTimecode()),
+      h('div', { class: 'reticle' }, sv('svg', { viewBox: '0 0 100 100' },
+        sv('path', { d: 'M8 28V8h20M72 8h20v20M92 72v20H72M28 92H8V72', fill: 'none', stroke: '#ffd27a', 'stroke-width': 3 }),
+        sv('path', { d: 'M50 38v-14M50 62v14M38 50H24M62 50h14', stroke: '#ffd27a', 'stroke-width': 2 }),
+        sv('circle', { cx: 50, cy: 50, r: 3, fill: '#ff5a5d' }))),
+      h('div', { class: 'lock' }, 'Ziel erfasst'),
+      h('div', { class: 'cam-tag' }, h('span', {}, `KW ${isoWeek(Date.now())} · Diese Woche`), h('b', {}, `${wk} von ${goal} Trainings`)),
+      h('div', { class: 'cam-ring' },
+        sv('svg', { viewBox: '0 0 66 66' },
+          sv('circle', { cx: 33, cy: 33, r: R, fill: 'rgba(0,0,0,.45)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 5 }),
+          p > 0 ? sv('circle', { class: 'arc' + (p >= 1 ? ' full' : ''), cx: 33, cy: 33, r: R, fill: 'none', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-dasharray': `${C * p} ${C}`, transform: 'rotate(-90 33 33)' }) : null),
+        h('b', {}, `${wk}/${goal}`))));
+}
+
+function heroCard() {
+  const v = S.settings.heroVideo;
+  const inp = h('input', { type: 'text', id: 'hero-link', inputmode: 'url', autocomplete: 'off', placeholder: 'https://youtu.be/…', 'aria-label': 'YouTube-Link für den Startbereich',
+    value: v ? `https://youtu.be/${v.id}${v.start ? `?t=${v.start}` : ''}` : '' });
+  return h('section', { class: 'panel' },
+    h('p', { class: 'note' }, 'Füg einen YouTube-Link ein, zum Beispiel einen Spider-Man-Clip. Er läuft stumm in Dauerschleife im Kamera-Look oben auf der Startseite. Eine Startzeit im Link (?t=95) wird übernommen. Ohne Internet erscheint wieder der Ring.'),
+    h('div', { class: 'stack', style: 'gap:8px' }, inp,
+      h('div', { class: 'row' },
+        h('button', { class: 'btn sm primary', onclick: () => {
+          const r = parseYouTube(inp.value);
+          if (!r) return toast('Das ist kein gültiger YouTube-Link');
+          S.settings.heroVideo = r; save(); toast('Video übernommen, schau auf die Startseite'); render();
+        } }, icon(I.check, 16), 'Übernehmen'),
+        v && h('button', { class: 'btn sm', onclick: () => { S.settings.heroVideo = null; save(); toast('Video entfernt'); render(); } }, 'Entfernen'))));
+}
+
 const mini = (v, l, cls) => h('div', { class: 'mini' }, h('div', { class: 'v ' + cls }, v), h('div', { class: 'l' }, l));
 
 function viewHeute() {
@@ -747,7 +844,7 @@ function viewHeute() {
   const out = [
     summary && summaryPanel(),
     h('section', { class: 'panel hero' },
-      h('div', { class: 'reactor' }, reactor(wk, goal)),
+      heroVisual(wk, goal),
       h('div', { class: 'week', role: 'list', 'aria-label': 'Trainingstage dieser Woche' }, weekDays().map(d =>
         h('div', { class: 'day' + (d.done ? ' done' : '') + (d.today ? ' today' : ''), role: 'listitem', 'aria-label': d.long + (d.done ? ', trainiert' : '') + (d.today ? ', heute' : '') }, d.short, h('b', {}, d.num)))),
       h('div', { class: 'minis' },
@@ -895,7 +992,7 @@ function viewPlaene() {
         h('button', { class: 'btn sm danger', onclick: () => { if (confirm(`Plan „${p.name}“ löschen?`)) { S.plans = S.plans.filter(x => x !== p); save(); render(); } } }, 'Löschen'))));
   });
   list.append(h('button', { class: 'btn ghost', onclick: () => { S.plans.push({ id: uid(), name: 'Neuer Plan', exercises: [] }); save(); render(); } }, icon(I.plus, 18), 'Neuer Plan'));
-  out.push(list, sec('Einstellungen'), settingsCard(), sec('Backup'), backupCard());
+  out.push(list, sec('Startbereich', 'Video'), heroCard(), sec('Einstellungen'), settingsCard(), sec('Backup'), backupCard());
   return out;
 }
 
