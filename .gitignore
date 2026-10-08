@@ -3,3 +3,6 @@
 __pycache__/
 *.pyc
 config.json
+
+# Mark I firmware secrets
+mark1/firmware/secrets.h
