@@ -8,6 +8,9 @@ Heruntergeladen am 09.10.2026, vor dem Einbau durchgelesen (nur Markdown, keine 
 | image-to-code | https://github.com/Leonxlnx/taste-skill (skills/image-to-code-skill) | MIT | 18dfc92 |
 | web-design-guidelines | https://github.com/vercel-labs/agent-skills (skills/web-design-guidelines) | MIT | 063bee9 |
 | playwright-cli | https://github.com/microsoft/playwright-cli (skills/playwright-cli) | Apache-2.0 | b85c7a7 |
+| scroll-world | https://github.com/oso95/scroll-world (skills/scroll-world) | MIT | 71cc36d |
 | awesome-design-md | https://github.com/VoltAgent/awesome-design-md (design-md, SKILL.md selbst geschrieben) | MIT | 13be5c0 |
 
 playwright-cli braucht das Programm selbst: `npm install -g @playwright/cli@latest`
+
+scroll-world braucht kostenpflichtige KI-Dienste: Higgsfield (Credits, fuer Bilder) und Monid (pro Video-Clip in USD, laut Skill ca. 27 $ fuer 6 Szenen in 1080p), dazu ffmpeg und Python mit Pillow.
